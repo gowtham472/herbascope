@@ -13,7 +13,7 @@ export function ScreeningSummary({ explanation }: { explanation: string }) {
         <button
           type="button"
           onClick={() => window.print()}
-          className="inline-flex items-center gap-2 rounded-lg border border-line px-3 py-1.5 text-sm font-medium text-ink hover:bg-canvas focus-visible:outline-2 focus-visible:outline-brand-600 print:hidden"
+          className="press inline-flex items-center gap-2 rounded-lg border border-line px-3 py-1.5 text-sm font-medium text-ink hover:bg-canvas focus-visible:outline-2 focus-visible:outline-brand-600 print:hidden"
         >
           <PrinterIcon aria-hidden="true" className="size-4" />
           Print report

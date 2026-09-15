@@ -24,7 +24,7 @@ import { ScreeningSummary } from "./ScreeningSummary";
 const NEW_ANALYSIS_LINK = (
   <Link
     href="/analyze"
-    className="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600"
+    className="press inline-flex items-center gap-2 rounded-lg bg-brand-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600"
   >
     <MicroscopeIcon aria-hidden="true" className="size-4" />
     New analysis
