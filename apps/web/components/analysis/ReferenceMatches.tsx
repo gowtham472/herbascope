@@ -1,25 +1,32 @@
+"use client";
+
 import { ImagesIcon } from "@phosphor-icons/react/ssr";
+import { useState } from "react";
 
 import { MetricCard } from "@/components/common/MetricCard";
 import { Panel } from "@/components/common/Panel";
 import { LABELS } from "@/lib/copy";
 import { classLabel, decimal } from "@/lib/format";
-import type { Retrieval } from "@/types";
+import type { ReferenceMatch, Retrieval } from "@/types";
 
 import { ReferenceMatchCard } from "./ReferenceMatchCard";
+import { ReferenceViewer } from "./ReferenceViewer";
 
 interface ReferenceMatchesProps {
   retrieval: Retrieval;
   predictedClass: string;
   minReferenceSimilarity: number;
+  /** The uploaded sample, for side-by-side comparison with a reference. */
+  sample: { imageUrl: string; filename: string };
 }
 
-export function ReferenceMatches({ retrieval, predictedClass, minReferenceSimilarity }: ReferenceMatchesProps) {
+export function ReferenceMatches({ retrieval, predictedClass, minReferenceSimilarity, sample }: ReferenceMatchesProps) {
+  const [compared, setCompared] = useState<ReferenceMatch | null>(null);
   return (
     <Panel
       title={LABELS.reference}
       icon={ImagesIcon}
-      description="Most similar curated reference micrographs (FAISS inner product on L2-normalised DINOv2 embeddings = cosine similarity)."
+      description="Most similar curated reference micrographs (FAISS inner product on L2-normalised DINOv2 embeddings = cosine similarity). Select one to compare it with the sample."
     >
       <dl className="grid gap-2 sm:grid-cols-3">
         <MetricCard
@@ -38,9 +45,11 @@ export function ReferenceMatches({ retrieval, predictedClass, minReferenceSimila
             predictedClass={predictedClass}
             minSimilarity={minReferenceSimilarity}
             index={index}
+            onCompare={() => setCompared(match)}
           />
         ))}
       </ol>
+      <ReferenceViewer match={compared} sample={sample} onClose={() => setCompared(null)} />
     </Panel>
   );
 }

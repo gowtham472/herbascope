@@ -92,6 +92,7 @@ function ResultReport({ analysis }: { analysis: AnalysisResponse }) {
           retrieval={retrieval}
           predictedClass={prediction.class_name}
           minReferenceSimilarity={decision.thresholds.min_reference_similarity}
+          sample={{ imageUrl: apiUrl(sample.image_url), filename: sample.filename }}
         />
       </Reveal>
 

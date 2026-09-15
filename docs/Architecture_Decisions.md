@@ -295,6 +295,9 @@ components.
   loading, error and retry states.
 - *Fonts*: Geist bundled from the `geist` npm package, not `next/font/google`.
 - *Images*: API images use `next/image` with `unoptimized`.
+- *Reference comparison*: selecting a retrieved reference opens it beside the uploaded sample in
+  a native `<dialog>`, which brings the focus trap, backdrop and Escape handling with no
+  dependency. Retrieval evidence is only useful if a reviewer can look at it closely.
 
 **Why.** The browser is the only API consumer, so there is one `NEXT_PUBLIC_API_BASE_URL` and no
 server-to-server URL to keep in sync. Bundled fonts keep dev and build working offline, a spec

@@ -109,8 +109,9 @@ They are not independent tests, and the system never claims they are (see §6.6)
    is the evidence overall?
 8. **The decision engine applies fixed rules** and writes the reason.
 9. **You see everything** on the result page: the sample, the decision with every criterion, the
-   5 reference images, the distance gauge, the quality checks and the model versions. The result
-   is saved to the local history.
+   5 reference images, the distance gauge, the quality checks and the model versions. Selecting a
+   reference opens it side by side with your sample, so you can compare the structures yourself.
+   The result is saved to the local history.
 
 ### Technical, per stage
 | Stage | Implementation | File |

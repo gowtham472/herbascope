@@ -12,13 +12,24 @@ interface ReferenceMatchCardProps {
   minSimilarity: number;
   /** Rank position, used to stagger the reveal so the atlas fills in nearest-first. */
   index?: number;
+  /** Opens the side-by-side comparison with the uploaded sample. */
+  onCompare: () => void;
 }
 
-export function ReferenceMatchCard({ match, predictedClass, minSimilarity, index = 0 }: ReferenceMatchCardProps) {
+export function ReferenceMatchCard({ match, predictedClass, minSimilarity, index = 0, onCompare }: ReferenceMatchCardProps) {
   const sameClass = match.class_name === predictedClass;
   return (
-    <Reveal as="li" index={index} className="lift zoom-hover overflow-hidden rounded-lg border border-line bg-surface break-inside-avoid">
-      <div className="relative aspect-square overflow-hidden bg-canvas">
+    <Reveal
+      as="li"
+      index={index}
+      className="lift zoom-hover group overflow-hidden rounded-lg border border-line bg-surface break-inside-avoid"
+    >
+      <button
+        type="button"
+        onClick={onCompare}
+        aria-label={`Compare the sample with reference ${match.reference_id}`}
+        className="relative block aspect-square w-full cursor-zoom-in overflow-hidden bg-canvas focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-brand-600"
+      >
         {/* Served by the local API; see ImagePreview for why optimisation is bypassed. */}
         <Image
           src={apiUrl(match.image_url)}
@@ -29,7 +40,10 @@ export function ReferenceMatchCard({ match, predictedClass, minSimilarity, index
           className="object-cover"
         />
         <span className="absolute left-2 top-2 rounded-md bg-ink/80 px-1.5 py-0.5 font-mono text-xs text-white">#{match.rank}</span>
-      </div>
+        <span className="absolute inset-x-0 bottom-0 translate-y-full bg-ink/70 py-1 text-center text-[11px] font-medium text-white transition-transform duration-200 group-hover:translate-y-0 print:hidden">
+          Compare
+        </span>
+      </button>
       <div className="space-y-1.5 p-3">
         <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
           <span className="text-sm font-semibold capitalize">{classLabel(match.class_name)}</span>

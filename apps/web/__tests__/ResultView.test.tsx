@@ -53,6 +53,22 @@ describe("ResultView", () => {
     expect(screen.getByRole("region", { name: /screening summary/i })).toHaveTextContent(reviewAnalysis.explanation);
   });
 
+  it("compares a reference with the sample side by side", async () => {
+    vi.mocked(getAnalysis).mockResolvedValue(reviewAnalysis);
+    render(<ResultView id={reviewAnalysis.id} />);
+    const first = reviewAnalysis.retrieval.matches[0];
+
+    await userEvent.click(await screen.findByRole("button", { name: new RegExp(`compare the sample with reference ${first.reference_id}`, "i") }));
+
+    const dialog = screen.getByRole("dialog", { name: /sample and reference comparison/i });
+    expect(within(dialog).getByRole("heading", { name: new RegExp(first.reference_id) })).toBeInTheDocument();
+    expect(within(dialog).getByRole("img", { name: /uploaded sample/i })).toBeInTheDocument();
+    expect(within(dialog).getByRole("img", { name: new RegExp(first.reference_id) })).toBeInTheDocument();
+
+    await userEvent.click(within(dialog).getByRole("button", { name: /close comparison/i }));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
   it("reports a missing result without offering a pointless retry", async () => {
     vi.mocked(getAnalysis).mockRejectedValue(new ApiError(404, "Analysis not found"));
     render(<ResultView id="0123456789abcdef0123456789abcdef" />);
