@@ -19,7 +19,7 @@ import { HEADLINE } from "@/lib/copy";
 
 const PIPELINE = [
   { icon: SealCheckIcon, title: "Quality & preprocessing", text: "Validates the file, measures focus, exposure and specimen visibility, then applies a fixed grayscale, no-crop transform." },
-  { icon: BrainIcon, title: "DINOv2 representation", text: "A frozen ViT-S/14 encoder turns the micrograph into one normalised embedding." },
+  { icon: BrainIcon, title: "DINOv2 representation", text: "A frozen DINOv2 vision transformer turns every rotation of the micrograph into an embedding, averaged into one." },
   { icon: TargetIcon, title: "Classifier", text: "Logistic regression estimates which supported class the embedding most resembles." },
   { icon: ImagesIcon, title: "Reference retrieval", text: "FAISS finds the most similar curated reference micrographs and shows them." },
   { icon: QuestionIcon, title: "Unknown assessment", text: "Distance to the reference library is compared with a threshold calibrated on real data." },

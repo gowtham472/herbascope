@@ -71,7 +71,7 @@ export function AnalyzeView() {
         ) : (
           <ImageUploader maxBytes={maxBytes} disabled={submitting} onSelect={select} />
         )}
-        {submitting ? <AnalysisProgress /> : null}
+        {submitting && model ? <AnalysisProgress encoder={model.encoder} /> : null}
         {error ? (
           <ErrorState
             title={error.status === 0 ? "Could not reach the API" : "The image could not be analysed"}

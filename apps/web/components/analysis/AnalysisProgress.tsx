@@ -3,21 +3,12 @@
 import { CircleNotchIcon } from "@phosphor-icons/react/ssr";
 import { useEffect, useState } from "react";
 
-const STAGES = [
-  "Validate and decode the image",
-  "Measure image quality",
-  "Encode with DINOv2 ViT-S/14",
-  "Classify the embedding",
-  "Retrieve nearest reference micrographs",
-  "Assess unknown risk",
-  "Compare evidence and apply the decision policy",
-];
-
 /**
  * Indeterminate progress. The API runs the whole pipeline in one request, so the stages are
- * listed for transparency without pretending to know which one is running.
+ * listed for transparency without pretending to know which one is running. The encoder name
+ * comes from /health, so the list stays true when a new model release is published.
  */
-export function AnalysisProgress() {
+export function AnalysisProgress({ encoder }: { encoder: string }) {
   const [seconds, setSeconds] = useState(0);
 
   useEffect(() => {
@@ -25,6 +16,16 @@ export function AnalysisProgress() {
     const timer = window.setInterval(() => setSeconds(Math.floor((Date.now() - started) / 1000)), 250);
     return () => window.clearInterval(timer);
   }, []);
+
+  const stages = [
+    "Validate and decode the image",
+    "Measure image quality",
+    `Encode every rotation with ${encoder}`,
+    "Classify the embedding",
+    "Retrieve nearest reference micrographs",
+    "Assess unknown risk",
+    "Compare evidence and apply the decision policy",
+  ];
 
   return (
     <div role="status" aria-live="polite" className="rounded-xl border border-line bg-surface p-5 shadow-sm">
@@ -38,7 +39,7 @@ export function AnalysisProgress() {
         </div>
       </div>
       <ol className="mt-4 grid gap-1.5 text-sm text-muted sm:grid-cols-2">
-        {STAGES.map((stage, index) => (
+        {stages.map((stage, index) => (
           <li key={stage} className="flex gap-2">
             <span className="font-mono text-xs leading-5 text-brand-600">{index + 1}</span>
             {stage}

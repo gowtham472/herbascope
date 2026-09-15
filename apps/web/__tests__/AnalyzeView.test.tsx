@@ -47,6 +47,7 @@ describe("AnalyzeView", () => {
     await userEvent.click(screen.getByRole("button", { name: /run screening/i }));
 
     expect(screen.getByRole("status")).toHaveTextContent("Analyzing sample…");
+    expect(screen.getByRole("status")).toHaveTextContent(`Encode every rotation with ${health.model?.encoder}`);
     expect(screen.getByRole("button", { name: /analyzing/i })).toBeDisabled();
 
     resolve(reviewAnalysis);
