@@ -1,0 +1,17 @@
+# API build context (repository root). Only requirements.txt, ml/ and services/api/ are needed;
+# data/ and models/ are mounted at runtime.
+.git
+.venv
+.claude
+**/__pycache__
+**/.pytest_cache
+.ruff_cache
+apps
+data
+models
+docs
+tests
+services/api/tests
+scripts
+.env
+.env.*

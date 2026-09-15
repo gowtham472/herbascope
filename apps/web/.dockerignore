@@ -1,0 +1,9 @@
+# Web build context (apps/web). Dependencies and build output are recreated inside the image.
+node_modules
+.next
+coverage
+__tests__
+vitest.config.mts
+vitest.setup.ts
+.env*.local
+*.tsbuildinfo

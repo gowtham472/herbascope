@@ -1,0 +1,35 @@
+# HerbaScope X local stack. Build the model artifacts on the host first:
+#   python -m scripts.run_pipeline
+# then: docker compose up --build   ->  web http://localhost:3000, API http://localhost:8000/docs
+name: herbascope-x
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: docker/api.Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      MODEL_DIR: /app/models
+      DATA_DIR: /app/data
+      REFERENCE_INDEX: /app/models/indexes/references.faiss
+      REFERENCE_METADATA: /app/models/indexes/reference_metadata.json
+      APP_STATE_DIR: /app/data/app
+      CORS_ORIGINS: http://localhost:3000
+    volumes:
+      - ./models:/app/models:ro
+      - ./data:/app/data
+
+  web:
+    build:
+      context: apps/web
+      dockerfile: ../../docker/web.Dockerfile
+      args:
+        # Called from the user's browser, so it must be reachable from the host.
+        NEXT_PUBLIC_API_BASE_URL: http://localhost:8000/api/v1
+    ports:
+      - "3000:3000"
+    depends_on:
+      api:
+        condition: service_healthy
