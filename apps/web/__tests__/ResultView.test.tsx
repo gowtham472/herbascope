@@ -33,21 +33,21 @@ describe("ResultView", () => {
     const decision = screen.getByRole("region", { name: /screening decision/i });
     expect(decision).toHaveTextContent("Review required");
     expect(decision).toHaveTextContent(reviewAnalysis.decision.reason);
-    expect(decision).toHaveTextContent("decision-v1");
+    expect(decision).toHaveTextContent(reviewAnalysis.decision.policy_version);
     const agreementRow = within(decision).getByRole("row", { name: /evidence agreement/i });
     expect(agreementRow).toHaveTextContent("No");
 
     const prediction = screen.getByRole("region", { name: /model prediction/i });
-    expect(prediction).toHaveTextContent("98.2%");
+    expect(prediction).toHaveTextContent("99.5%");
     expect(within(prediction).getAllByRole("meter")[0]).toHaveAttribute("aria-valuetext", expect.stringMatching(/policy minimum/i));
 
     const references = screen.getByRole("region", { name: /reference evidence/i });
     expect(within(references).getAllByRole("img")).toHaveLength(reviewAnalysis.retrieval.matches.length);
-    expect(references).toHaveTextContent("0.763");
+    expect(references).toHaveTextContent("0.880");
 
-    expect(screen.getByRole("region", { name: /unknown risk/i })).toHaveTextContent("KNOWN");
+    expect(screen.getByRole("region", { name: /unknown risk/i })).toHaveTextContent("UNCERTAIN");
     expect(screen.getByRole("region", { name: /evidence agreement/i })).toHaveTextContent("LOW");
-    expect(screen.getByRole("region", { name: /image quality/i })).toHaveTextContent("ACCEPTABLE");
+    expect(screen.getByRole("region", { name: /image quality/i })).toHaveTextContent("DEGRADED");
     expect(screen.getByRole("region", { name: /model metadata/i })).toHaveTextContent("DINOv2 ViT-S/14");
     expect(screen.getByRole("region", { name: /limitations/i })).toHaveTextContent(reviewAnalysis.disclaimer);
     expect(screen.getByRole("region", { name: /screening summary/i })).toHaveTextContent(reviewAnalysis.explanation);

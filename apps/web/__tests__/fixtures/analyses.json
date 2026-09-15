@@ -1,1 +1,31 @@
-{"items":[{"id":"2eabdd0a66ec462bbc042bf3e713dec5","created_at":"2026-09-15T10:27:42.749+00:00","filename":"conflicting_evidence.png","decision_status":"REVIEW_REQUIRED","predicted_class":"sirih_merah","confidence":0.9818500876426697,"image_url":"/analyses/2eabdd0a66ec462bbc042bf3e713dec5/image"}]}
+{
+  "items": [
+    {
+      "id": "7c57e43e5d2c4868bddba32496d1a89e",
+      "created_at": "2026-09-15T23:37:44.771+00:00",
+      "filename": "strong_evidence.png",
+      "decision_status": "PRELIMINARY_PASS",
+      "predicted_class": "sirih",
+      "confidence": 0.9991901516914368,
+      "image_url": "/analyses/7c57e43e5d2c4868bddba32496d1a89e/image"
+    },
+    {
+      "id": "5038779f6ec94a1faa5640fc6d813e41",
+      "created_at": "2026-09-15T23:37:23.581+00:00",
+      "filename": "unknown.png",
+      "decision_status": "UNKNOWN",
+      "predicted_class": "sirih",
+      "confidence": 0.715411901473999,
+      "image_url": "/analyses/5038779f6ec94a1faa5640fc6d813e41/image"
+    },
+    {
+      "id": "cf621b829f1c46d989f24be8521ad7ba",
+      "created_at": "2026-09-15T23:32:38.035+00:00",
+      "filename": "conflicting_evidence.png",
+      "decision_status": "REVIEW_REQUIRED",
+      "predicted_class": "sirih",
+      "confidence": 0.9946398138999939,
+      "image_url": "/analyses/cf621b829f1c46d989f24be8521ad7ba/image"
+    }
+  ]
+}

@@ -1,1 +1,24 @@
-{"status":"ok","api_version":"1.0.0","model_loaded":true,"index_loaded":true,"reference_count":40,"max_upload_mb":10.0,"model":{"encoder":"DINOv2 ViT-S/14","classifier_version":"classifier-v1","index_version":"index-v1","unknown_calibration_version":"unknown-v1","quality_version":"quality-v1","policy_version":"decision-v1","preprocessing_version":"preprocess-v1","embedding_fingerprint":"DINOv2 ViT-S/14@ed25f3a31f01|preprocess-v1|dim=384","classes":["sirih","sirih_merah"],"reference_count":40},"detail":null}
+{
+  "status": "ok",
+  "api_version": "1.0.0",
+  "model_loaded": true,
+  "index_loaded": true,
+  "reference_count": 40,
+  "max_upload_mb": 10.0,
+  "model": {
+    "encoder": "DINOv2 ViT-S/14",
+    "classifier_version": "classifier-v4",
+    "index_version": "index-v4",
+    "unknown_calibration_version": "unknown-v4",
+    "quality_version": "quality-v1",
+    "policy_version": "decision-v4",
+    "preprocessing_version": "preprocess-v1",
+    "embedding_fingerprint": "DINOv2 ViT-S/14@ed25f3a31f01|preprocess-v1|size=588|pool=cls_last4|views=4|dim=1536",
+    "classes": [
+      "sirih",
+      "sirih_merah"
+    ],
+    "reference_count": 40
+  },
+  "detail": null
+}
