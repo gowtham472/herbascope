@@ -6,6 +6,6 @@ Upload these files from `data/demo/` on the Analyze page. Each is a real evaluat
 
 | Case | File | Source | Truth | Prediction (confidence) | Retrieved | Top similarity | Agreement | Unknown | Decision |
 |---|---|---|---|---|---|---|---|---|---|
-| strong_evidence | `data/demo/strong_evidence.png` | Mikrobat / test | sirih | sirih (99.9%) | sirih | 0.960 | HIGH | KNOWN | **PRELIMINARY_PASS** |
-| conflicting_evidence | `data/demo/conflicting_evidence.png` | Mikrobat / heldout_known | sirih | sirih (99.9%) | sirih_merah | 0.885 | LOW | UNCERTAIN | **REVIEW_REQUIRED** |
-| unknown | `data/demo/unknown.png` | DIMPSAR / ood_evaluation | Gauva | sirih_merah (58.9%) | sirih_merah | 0.628 | MEDIUM | UNKNOWN | **UNKNOWN** |
+| strong_evidence | `data/demo/strong_evidence.png` | Mikrobat / test | sirih | sirih (100.0%) | sirih | 0.977 | HIGH | KNOWN | **PRELIMINARY_PASS** |
+| conflicting_evidence | `data/demo/conflicting_evidence.png` | Mikrobat / test | sirih_merah | sirih_merah (100.0%) | sirih | 0.842 | LOW | UNCERTAIN | **REVIEW_REQUIRED** |
+| unknown | `data/demo/unknown.png` | DIMPSAR / ood_evaluation | Castor | sirih_merah (99.5%) | sirih_merah | 0.629 | MEDIUM | UNKNOWN | **UNKNOWN** |

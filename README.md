@@ -38,7 +38,7 @@ a deterministic, versioned policy to decide: **PRELIMINARY_PASS**, **REVIEW_REQU
 flowchart TD
     IMG[Microscopic image] --> VAL[Validate + decode]
     VAL --> Q[Image quality]
-    VAL --> PRE[Grayscale · pad to square · 448 px · 4 rotations]
+    VAL --> PRE[Grayscale · pad to square · 518 px · 4 rotations]
     PRE --> ENC[DINOv2 ViT-S/14 embedding]
     ENC --> CLS[Logistic regression]
     ENC --> RET[FAISS reference retrieval]
@@ -56,7 +56,7 @@ flowchart TD
 | Stage | What it does |
 |---|---|
 | Quality | Resolution, focus, exposure, clipping and specimen visibility, with bounds calibrated on reference training images |
-| Encoder | Frozen DINOv2 ViT-S/14 at 448 px; CLS tokens of the last 4 blocks, each L2-normalised and concatenated (1536-d), averaged over 4 rotations |
+| Encoder | Frozen DINOv2 ViT-S/14 at 518 px; CLS tokens of the last 4 blocks, each L2-normalised and concatenated (1536-d), averaged over 4 rotations |
 | Classifier | Logistic regression trained on every rotation view; C chosen by validation log-loss |
 | Retrieval | 40 curated reference micrographs (k-means medoids), exact cosine search |
 | Unknown | Distance = 1 − mean similarity to the 5 nearest references; threshold chosen to minimise out-of-distribution false acceptance while keeping ≥ 95% known acceptance |
@@ -70,29 +70,37 @@ for training or calibration:
 
 | Set | What it is | Result |
 |---|---|---|
-| `test` (72) | Mikrobat, fragment types present in the reference library | **Accuracy 95.8%** (69/72); 16 PRELIMINARY_PASS, 15 correct; 2 of 3 misclassifications routed to REVIEW |
+| `test` (72) | Mikrobat, fragment types present in the reference library | **Accuracy 95.8%** (69/72); 26 PRELIMINARY_PASS, **all correct**; all 3 misclassifications routed to REVIEW |
 | `ood_evaluation` (200) | DIMPSAR field-leaf photos, classes not used in calibration | **200/200 UNKNOWN**, 0 false passes |
-| `heldout_known` (104) | Mikrobat fragment types withheld from training and references | Accuracy 55.8%; PASS precision 41.2% (see limitation below) |
+| `heldout_known` (104) | Mikrobat fragment types withheld from training and references | Accuracy 57.7%; 34 PRELIMINARY_PASS, 7 correct (see key finding) |
 
 Ablation, measured on `test` and OOD:
 
 | System | Test wrong-class accepted | OOD false acceptance |
 |---|---|---|
 | Classifier only | 3 | 100% |
-| Full evidence + decision | 1 | 0% |
+| Full evidence + decision | 0 | 0% |
 
-**Model improvement.** Release v1 (224 px, final-block CLS, one view) scored 88.9% on test.
-Pre-registered experiment ladders, selected only by grouped cross-validation on the development
-pool, raised cross-validated accuracy to 90.6% and test accuracy to 95.8%
-([phase 2 log](docs/reports/model_improvement_experiments-v2.md)). The trade-off is reported, not
-hidden: across test and held-out material, wrong-class passes fell from 31 to 11, but correct
-passes fell from 45 to 22. Retrieval over the 40-image reference library did not improve with the
-classifier (test top-1 reference class accuracy 88.9% → 76.4%), so HIGH agreement, a PASS
-requirement, is rarer, and one test sample now passes with the wrong class.
+**Model improvement.** Pre-registered experiment ladders change one part of the embedding recipe
+per rung and adopt it only if grouped cross-validation on the development pool improves. Test and
+held-out results never decide. Each promoted selection is rebuilt and evaluated as a release:
+
+| Release | Embedding recipe | CV accuracy | Test accuracy | Test passes (correct) | Held-out wrong-class passes |
+|---|---|---|---|---|---|
+| v1 | 224 px, final-block CLS, 1 view | — | 88.9% | 24 (24) | 31 |
+| v2 | 448 px, last-4-block CLS, 4 rotations | 90.6% | 95.8% | 16 (15) | 10 |
+| v3 (current) | 518 px, last-4-block CLS, 4 rotations | 91.6% | 95.8% | 26 (26) | 27 |
+
+Logs: [phase 2](docs/reports/model_improvement_experiments-v2.md),
+[phase 3](docs/reports/model_improvement_experiments-v3.md). Every release rejected all 200 OOD
+images.
 
 **Key finding.** Screening conclusions only transfer to fragment types represented in the
 reference library. On unseen fragment types, the classifier and retrieval can agree confidently
-on the wrong class because they share one visual representation.
+on the wrong class because they share one visual representation. The release table shows this
+directly: on held-out fragment types, wrong-class passes swing between releases (31, 10, 27)
+while test passes stay correct. Calibration covers only the represented material, so the PASS
+gate is no safeguard for material the library does not contain.
 
 ## Repository layout
 
@@ -283,8 +291,8 @@ by hand.** They are written by the calibration steps into `models/`.
 | File | Expected decision | Why |
 |---|---|---|
 | `strong_evidence.png` | PRELIMINARY_PASS | Mikrobat test image; confident classifier, unanimous references, low risk |
-| `conflicting_evidence.png` | REVIEW_REQUIRED | Held-out sirih; the classifier says sirih, the reference library favours sirih_merah |
-| `unknown.png` | UNKNOWN | DIMPSAR field photo; the classifier alone would say "sirih_merah" at 58.9% |
+| `conflicting_evidence.png` | REVIEW_REQUIRED | Mikrobat test image; the classifier says sirih_merah, the reference library favours sirih |
+| `unknown.png` | UNKNOWN | DIMPSAR field photo; the classifier alone would say "sirih_merah" at 99.5% |
 
 Offline checklist:
 1. Run `run_pipeline` once while online (it downloads datasets and DINOv2 weights).
@@ -329,7 +337,7 @@ Verified counts are in [`docs/reports/dataset_report.md`](docs/reports/dataset_r
 | [`docs/Architecture_Decisions.md`](docs/Architecture_Decisions.md) | Why every component is built the way it is (ADR-001 … 021) |
 | [`docs/reports/dataset_report.md`](docs/reports/dataset_report.md) | Generated dataset lock: counts, duplicates, splits, licenses |
 | [`docs/reports/evaluation_report.md`](docs/reports/evaluation_report.md) | Generated metrics, calibration, decision counts, ablation, findings |
-| [`docs/reports/model_improvement_experiments-v2.md`](docs/reports/model_improvement_experiments-v2.md) | Generated model-improvement log: pre-registered ladder, cross-validated accuracy, adoption decisions |
+| `docs/reports/model_improvement_experiments-v*.md` | Generated model-improvement logs, one per phase: pre-registered ladder, cross-validated accuracy, adoption decisions |
 | [`docs/reports/demo_cases.md`](docs/reports/demo_cases.md) | Generated presentation cases |
 | [`docs/Architecture.md`](docs/Architecture.md) | Original technical architecture specification (with implementation status) |
 | [`docs/Data_Set.md`](docs/Data_Set.md) | Microscopy-first dataset specification (with implementation status) |

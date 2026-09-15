@@ -123,14 +123,14 @@ measure whether genuine material of a known species that the library does not re
 wrongly rejected or wrongly accepted. The rule is deterministic rather than hand-picked. The
 remaining groups are split 70/15/15, stratified by class × fragment type.
 
-**Consequence (reported, not tuned away).** Held-out classification accuracy is 55.8% against
+**Consequence (reported, not tuned away).** Held-out classification accuracy is 57.7% against
 95.8% on test. Species and fragment type are confounded in Mikrobat: after curation the two
 classes share no fragment-type label. See the evaluation findings.
 
 ## ADR-005: Preprocessing
 
 **Decision.** Convert to grayscale, pad to square with the mean intensity, bicubic resize to the
-encoder input size (448 px in the current release, see ADR-020), then ImageNet normalisation,
+encoder input size (518 px in the current release, see ADR-020), then ImageNet normalisation,
 versioned as `preprocess-v1`. EXIF orientation is applied on decode.
 
 **Why.**
@@ -152,7 +152,7 @@ the configurable recipe of ADR-020. Weights are saved to `models/pretrained/dino
 `SOURCE.json` receipt and always loaded with `local_files_only=True`.
 
 **Why.** DINOv2 features work directly with linear classifiers and nearest-neighbour retrieval.
-ViT-S keeps CPU inference practical: the current recipe encodes one image in about 1.5 s on the
+ViT-S keeps CPU inference practical: the current recipe encodes one image in about 2.2 s on the
 development laptop, and the larger ViT-B/14 lowered cross-validated accuracy when tested (ADR-022).
 Local, pinned weights make the demo work offline. Because the weights directory describes itself,
 the API does not need the training config.
@@ -167,7 +167,7 @@ fingerprints differ.
 {0.01 … 10⁴} by **validation log-loss**, and the final model is fitted on the training split only.
 
 **Why.** Log-loss is a proper scoring rule, so the chosen model has honest probabilities, which
-matters because confidence feeds a calibrated threshold. The optimum (C = 100) is interior to the
+matters because confidence feeds a calibrated threshold. The optimum (C = 1000) is interior to the
 grid; the grid was widened once when the optimum sat on its edge. Fitting on train only keeps the
 validation split unseen for unknown and decision calibration.
 
@@ -209,8 +209,8 @@ cross-platform builds.
 **Why.** The mean over k neighbours measures density in reference space, while the single best
 match stays in the retrieval evidence. The objective encodes the spec's priority (no false
 acceptance) as an explicit constraint rather than a guessed number. Calibrated values: threshold
-0.188, boundary 0.115. Known validation distances top out at 0.146; DIMPSAR calibration distances
-start at 0.260.
+0.180, boundary 0.115. Known validation distances top out at 0.151; DIMPSAR calibration distances
+start at 0.244.
 
 **Limitation (verbatim in every result).** Because Mikrobat contains only two species, true
 held-out-species OOD calibration was not possible. See `models/classifiers/calibration.json`.
@@ -253,9 +253,8 @@ Calibrated on validation (`models/configs/<decision version>.json`):
 - `max_unknown_risk`: the risk at the known boundary.
 
 **Why.** Rules are reproducible, auditable and unit-tested, and each result shows every criterion
-with observed and required values. On the test split 15 of 16 PASS decisions were correct and 2 of
-3 misclassifications were stopped (release v1: 24 of 24 and 8 of 8; the trade-off is analysed in
-ADR-022).
+with observed and required values. On the test split all 26 PASS decisions were correct and all 3
+misclassifications were stopped. How this changed across releases is analysed in ADR-022.
 
 ## ADR-014: One screening pipeline for API, evaluation and smoke test
 
@@ -337,12 +336,13 @@ multi-GB CUDA layers. `NEXT_PUBLIC_*` values are inlined at build time.
 
 **Decision.** The embedding is defined by a recipe in `ml/configs/pipeline.json` (`encoder`):
 the pinned DINOv2 backbone, the input resolution (any multiple of the 14 px patch), the pooling
-(`cls`; `cls_patchmean`, the CLS token concatenated with the mean patch token; or `cls_last4`,
-the layer-normalised CLS tokens of the last four transformer blocks; or `cls_last4_patchmean`,
-which adds the mean patch token as a fifth part; parts are L2-normalised before concatenation), and the number of dihedral views (rotations and reflections of the square)
-averaged at inference. The current release uses 448 px, `cls_last4` and four rotations. `classifier.train_on_views` optionally trains on every view as an
-augmented row. `extract_embeddings` writes the recipe as an encoder settings artifact, and the
-fingerprint includes every recipe field.
+(`cls`; `cls_patchmean`, the CLS token concatenated with the mean patch token; `cls_last4`, the
+layer-normalised CLS tokens of the last four transformer blocks; or `cls_last4_patchmean`, which
+adds the mean patch token as a fifth part; parts are L2-normalised before concatenation), and the
+number of dihedral views (rotations and reflections of the square) averaged at inference. The
+current release uses 518 px, `cls_last4` and four rotations. `classifier.train_on_views`
+optionally trains on every view as an augmented row. `extract_embeddings` writes the recipe as an
+encoder settings artifact, and the fingerprint includes every recipe field.
 
 **Why.**
 - A micrograph has no canonical orientation, so all eight dihedral views are equally valid
@@ -384,7 +384,8 @@ hypothesis per rung, the primary metric, the adoption rule and a latency budget.
 - *Adoption*: rungs run in order, each on top of the best configuration so far. A rung is adopted
   if it encodes an image within 3 s and raises out-of-fold accuracy, or ties with lower log-loss.
 - *Reporting*: validation, test and held-out results, and the fragment types of the out-of-fold
-  errors, are reported for every rung and never decide adoption. A later phase designed after seeing results is a new ladder, and its objective says so.
+  errors, are reported for every rung and never decide adoption. A later phase designed after
+  seeing results is a new ladder, and its objective says so.
 - *Promotion*: the selection is copied into `pipeline.json` with bumped artifact versions and the
   full pipeline is rebuilt and evaluated.
 
@@ -400,16 +401,27 @@ hypothesis per rung, the primary metric, the adoption rule and a latency budget.
 - *One implementation.* Experiments pool cached token features with the production functions, so
   the measured embedding is the one that ships (ADR-020).
 
-**Results.** Generated logs: [`reports/model_improvement_experiments-v2.md`](reports/model_improvement_experiments-v2.md).
-Release v2 (448 px, `cls_last4`, four rotations, trained on every view) reached 90.6%
-cross-validated accuracy and 95.8% test accuracy (release v1: 88.9%).
+**Results.** Generated logs: [`reports/model_improvement_experiments-v2.md`](reports/model_improvement_experiments-v2.md),
+[`reports/model_improvement_experiments-v3.md`](reports/model_improvement_experiments-v3.md).
 
-**Trade-off (reported, not tuned away).** The decision layer did not improve with the classifier.
-Test top-1 reference class accuracy fell from 88.9% to 76.4% and HIGH agreement from 33.3% to
-22.2% of test samples. PRELIMINARY_PASS therefore became rarer. Across test and held-out
-material, correct passes fell from 45 to 22 and wrong-class passes from 31 to 11. On test, 15 of 16
-passes are correct, against 24 of 24 in release v1. The decision thresholds were not re-tuned on
-test data to restore the old count, because that would break the calibration contract (ADR-013).
+| Release | Recipe | CV accuracy | Test accuracy | Test passes (correct) | Held-out passes (correct) |
+|---|---|---|---|---|---|
+| v1 | 224 px, `cls`, 1 view | — | 88.9% | 24 (24) | 52 (21) |
+| v2 | 448 px, `cls_last4`, 4 rotations, trained on views | 90.6% | 95.8% | 16 (15) | 17 (7) |
+| v3 | 518 px, `cls_last4`, 4 rotations, trained on views | 91.6% | 95.8% | 26 (26) | 34 (7) |
+
+**What the releases show (reported, not tuned away).**
+- *The decision layer does not move with the classifier.* PRELIMINARY_PASS needs all five
+  references to share the predicted class (HIGH agreement). The share of test samples with HIGH
+  agreement went 33.3% → 22.2% → 37.5%, and test passes went 24 → 16 → 26, while test accuracy
+  rose and then held. The 40 reference medoids are re-selected by k-means in every new embedding
+  space, so retrieval agreement is a property of each release, not of the classifier.
+- *Represented material is safe; unrepresented material is not.* Release v3 passes 26 test samples,
+  all correct, and stops all 3 misclassifications. On held-out fragment types, wrong-class passes
+  went 31 → 10 → 27. Calibration only sees represented material, so no release controls this. It
+  is the limitation of ADR-004, measured three times.
+- Decision thresholds were never re-tuned on test or held-out data to improve these numbers,
+  because that would break the calibration contract (ADR-013) and the selection rule above.
 
 **Rejected.** *Selecting on test or held-out accuracy*: too few images, and it leaks the
 evaluation into the model. *Fine-tuning DINOv2*: 341 training images, and it would move the
