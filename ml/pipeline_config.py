@@ -52,6 +52,9 @@ class Sources(_Strict):
     dimpsar: DimpsarSource
 
 
+Pooling = Literal["cls", "cls_patchmean", "cls_last4", "cls_last4_patchmean"]
+
+
 class Backbone(_Strict):
     """A pinned pretrained DINOv2 checkpoint."""
 
@@ -66,7 +69,7 @@ class EncoderConfig(_Strict):
     version: str
     backbone: Backbone
     input_size: int = Field(gt=0, multiple_of=14)
-    pooling: Literal["cls", "cls_patchmean", "cls_last4"]
+    pooling: Pooling
     views: int = Field(ge=1, le=8)
     batch_size: int = Field(gt=0)
 

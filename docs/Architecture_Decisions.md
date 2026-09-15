@@ -338,8 +338,8 @@ multi-GB CUDA layers. `NEXT_PUBLIC_*` values are inlined at build time.
 **Decision.** The embedding is defined by a recipe in `ml/configs/pipeline.json` (`encoder`):
 the pinned DINOv2 backbone, the input resolution (any multiple of the 14 px patch), the pooling
 (`cls`; `cls_patchmean`, the CLS token concatenated with the mean patch token; or `cls_last4`,
-the layer-normalised CLS tokens of the last four transformer blocks; parts are L2-normalised
-before concatenation), and the number of dihedral views (rotations and reflections of the square)
+the layer-normalised CLS tokens of the last four transformer blocks; or `cls_last4_patchmean`,
+which adds the mean patch token as a fifth part; parts are L2-normalised before concatenation), and the number of dihedral views (rotations and reflections of the square)
 averaged at inference. The current release uses 448 px, `cls_last4` and four rotations. `classifier.train_on_views` optionally trains on every view as an
 augmented row. `extract_embeddings` writes the recipe as an encoder settings artifact, and the
 fingerprint includes every recipe field.
@@ -383,8 +383,8 @@ hypothesis per rung, the primary metric, the adoption rule and a latency budget.
   optimistic, equally for every rung.
 - *Adoption*: rungs run in order, each on top of the best configuration so far. A rung is adopted
   if it encodes an image within 3 s and raises out-of-fold accuracy, or ties with lower log-loss.
-- *Reporting*: validation, test and held-out results are reported for every rung and never decide
-  adoption. A later phase designed after seeing results is a new ladder, and its objective says so.
+- *Reporting*: validation, test and held-out results, and the fragment types of the out-of-fold
+  errors, are reported for every rung and never decide adoption. A later phase designed after seeing results is a new ladder, and its objective says so.
 - *Promotion*: the selection is copied into `pipeline.json` with bumped artifact versions and the
   full pipeline is rebuilt and evaluated.
 

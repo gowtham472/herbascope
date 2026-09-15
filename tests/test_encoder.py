@@ -1,7 +1,18 @@
+from typing import get_args
+
 import numpy as np
 import pytest
 
-from ml.encoders.dinov2_encoder import LAST_BLOCKS, EncoderSettings, ViewTokens, l2_normalize, pool_features
+from ml.encoders.dinov2_encoder import (
+    BLOCK_POOLINGS,
+    LAST_BLOCKS,
+    POOLINGS,
+    EncoderSettings,
+    ViewTokens,
+    l2_normalize,
+    pool_features,
+)
+from ml.pipeline_config import Pooling
 from ml.training.train_classifier import training_rows
 
 
@@ -29,9 +40,23 @@ def test_cls_last4_pooling_concatenates_normalised_blocks():
     assert np.allclose(pooled[0, 0], np.array([1, 0, 0, 1, 1, 0, 0, 1]) / 2)
 
 
-def test_cls_last4_pooling_requires_block_tokens():
+def test_cls_last4_patchmean_pooling_adds_patch_mean_as_equal_fifth_part():
+    layers = np.zeros((1, LAST_BLOCKS, 2), dtype=np.float32)  # (N, blocks, hidden)
+    layers[..., 0] = 5.0
+    pooled = pool_features(_tokens([[1.0, 0.0]], [[0.0, 3.0]], layers), "cls_last4_patchmean")
+    assert pooled.shape == (1, 2 * (LAST_BLOCKS + 1))
+    assert np.allclose(pooled[0], np.array([1, 0] * LAST_BLOCKS + [0, 1]) / np.sqrt(LAST_BLOCKS + 1))
+
+
+@pytest.mark.parametrize("pooling", BLOCK_POOLINGS)
+def test_block_poolings_require_block_tokens(pooling):
     with pytest.raises(ValueError, match="per-block"):
-        pool_features(_tokens([[1.0, 0.0]], [[1.0, 0.0]]), "cls_last4")
+        pool_features(_tokens([[1.0, 0.0]], [[1.0, 0.0]]), pooling)
+
+
+def test_encoder_poolings_match_the_config_schema():
+    assert get_args(Pooling) == POOLINGS
+    assert set(BLOCK_POOLINGS) <= set(POOLINGS)
 
 
 def test_pooling_rejects_unknown_recipe():

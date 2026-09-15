@@ -1,0 +1,52 @@
+{
+  "version": "experiments-v4",
+  "registered_at": "2026-09-15",
+  "objective": "Phase 4, registered after the experiments-v3 results and disclosed as such. Phase 3 adopted a 518 px encoder input (G2, 91.6% cross-validated accuracy). Resolution has improved cross-validated accuracy at every step (224, 308, 448 and 518 px); additional views have not (G1). An out-of-fold error review of the phase 2 recipe found 36 of its 39 cross-validation errors in epidermis preparations, and the most confident of them show plain polygonal cells without a visible stomate or crystal. Phase 4 tests whether whole-field texture statistics from patch tokens help at high resolution, and whether the resolution gains continue beyond 518 px, within the same latency budget.",
+  "primary_metric": "Out-of-fold accuracy from grouped, stratified 5-fold cross-validation on the development pool (train + validation splits).",
+  "adoption_rule": "Rungs are evaluated in the registered order, each applying its change to the best configuration adopted so far. A rung is adopted if its encoding time fits the latency budget and its out-of-fold accuracy is higher than the current best, or equal with a lower out-of-fold log-loss. Rungs over the latency budget are evaluated and reported but cannot be adopted. Validation, test and held-out results are reported for every rung and are never used to decide adoption.",
+  "latency_budget_ms": 3000,
+  "latency_rationale": "Interactive screening: encoding one uploaded image (all views) must take at most 3 s on the reference laptop CPU (AMD Ryzen 7 7735HS).",
+  "cv_folds": 5,
+  "feature_views": 4,
+  "backbones": {
+    "vits14": {
+      "name": "DINOv2 ViT-S/14",
+      "hub_id": "facebook/dinov2-small",
+      "revision": "ed25f3a31f01632728cabb09d1542f84ab7b0056",
+      "local_dir": "dinov2_vits14",
+      "license": "Apache-2.0"
+    }
+  },
+  "baseline": {
+    "id": "H0",
+    "title": "Phase 3 selection (G2): ViT-S/14, 518 px, last-4-block CLS, 4 rotation views",
+    "hypothesis": "Reference point carried over from experiments-v3.",
+    "config": {
+      "backbone": "vits14",
+      "input_size": 518,
+      "pooling": "cls_last4",
+      "views": 4,
+      "train_on_views": true
+    }
+  },
+  "ladder": [
+    {
+      "id": "H1",
+      "title": "Add the mean patch token to last-4-block CLS pooling",
+      "hypothesis": "The most confident remaining errors show cell-wall patterns without a salient structure for the CLS tokens to attend to. The mean final-block patch token summarises texture over the whole field as an equally weighted fifth part. At 518 px each patch covers about 8 source pixels, against 19 at 224 px, where patch-mean pooling (E2) was not adopted. Encoding cost is unchanged.",
+      "change": {"pooling": "cls_last4_patchmean"}
+    },
+    {
+      "id": "H2",
+      "title": "Encoder resolution 588 px with four rotation views",
+      "hypothesis": "Tests whether the resolution trend continues: 588 px gives 42 x 42 patches. Extrapolating the measured 448 and 518 px costs gives about 3.0 s per image, so this rung may exceed the latency budget; if so it is reported as an accuracy reference only.",
+      "change": {"input_size": 588, "views": 4}
+    },
+    {
+      "id": "H3",
+      "title": "Encoder resolution 588 px with two rotation views",
+      "hypothesis": "Encoding two rotations (0 and 90 degrees) keeps 588 px within the budget (about 1.5 s per image estimated) and tests whether the extra resolution outweighs the two fewer views.",
+      "change": {"input_size": 588, "views": 2}
+    }
+  ]
+}

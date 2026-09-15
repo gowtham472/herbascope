@@ -24,17 +24,18 @@ from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
 from functools import lru_cache
 from pathlib import Path
-from typing import Literal
 
 import numpy as np
+import pandas as pd
 from pydantic import BaseModel, ConfigDict, Field
 from sklearn.metrics import log_loss
 from sklearn.model_selection import StratifiedGroupKFold
 
 from ml import paths
 from ml.classifiers.classifier import fit_logistic_regression, select_regularization
+from ml.encoders.dinov2_encoder import BLOCK_POOLINGS
 from ml.experiments.feature_cache import TokenFeatures, load_features
-from ml.pipeline_config import Backbone, PipelineConfig, load_pipeline_config
+from ml.pipeline_config import Backbone, PipelineConfig, Pooling, load_pipeline_config
 from ml.training import datasets as ds
 from ml.training.train_classifier import training_rows
 
@@ -48,7 +49,7 @@ class _Strict(BaseModel):
 class Candidate(_Strict):
     backbone: str
     input_size: int = Field(gt=0, multiple_of=14)
-    pooling: Literal["cls", "cls_patchmean", "cls_last4"]
+    pooling: Pooling
     views: int = Field(ge=1, le=8)
     train_on_views: bool
 
@@ -94,6 +95,7 @@ class RungResult:
     cv_fold_accuracies: list[float]
     cv_log_loss: float
     cv_c: float
+    cv_errors_by_fragment: dict[str, int]
     holdout_c: float
     validation_accuracy: float
     test_correct: int
@@ -118,6 +120,17 @@ def _features(
     )
 
 
+@dataclass(frozen=True)
+class CrossValidation:
+    """Out-of-fold results at the C with the lowest pooled out-of-fold log-loss."""
+
+    accuracy: float
+    fold_accuracies: list[float]
+    log_loss: float
+    c: float
+    correct: np.ndarray  # per development image: out-of-fold prediction was correct
+
+
 def cross_validate(
     view_vectors: np.ndarray,
     labels: np.ndarray,
@@ -125,8 +138,8 @@ def cross_validate(
     train_on_views: bool,
     pipeline: PipelineConfig,
     folds: int,
-) -> tuple[float, list[float], float, float]:
-    """Grouped stratified CV; returns (accuracy, fold accuracies, log-loss, C) at the best C."""
+) -> CrossValidation:
+    """Grouped stratified cross-validation over the configured C grid."""
     embeddings = training_rows(view_vectors, labels, on_views=False)[0]
     splitter = StratifiedGroupKFold(n_splits=folds, shuffle=True, random_state=pipeline.seed)
     fold_indices = list(splitter.split(embeddings, labels, groups))
@@ -142,10 +155,15 @@ def cross_validate(
             probabilities[test_index] = model.predict_proba(embeddings[test_index])
             fold_accuracies.append(float(np.mean(probabilities[test_index].argmax(1) == labels[test_index])))
         loss = float(log_loss(labels, probabilities))
-        accuracy = float(np.mean(probabilities.argmax(1) == labels))
-        if best is None or (loss, c) < (best[2], best[3]):
-            best = (accuracy, fold_accuracies, loss, c)
+        correct = probabilities.argmax(1) == labels
+        if best is None or (loss, c) < (best.log_loss, best.c):
+            best = CrossValidation(float(correct.mean()), fold_accuracies, loss, c, correct)
     return best
+
+
+def _errors_by_fragment(frame: pd.DataFrame, correct: np.ndarray) -> dict[str, int]:
+    counts = frame.loc[~correct, "fragment_type"].value_counts()
+    return {str(fragment): int(count) for fragment, count in counts.items()}
 
 
 def evaluate_candidate(
@@ -164,7 +182,7 @@ def evaluate_candidate(
             candidate.input_size,
             split,
             experiments.feature_views,
-            need_layers=candidate.pooling == "cls_last4",
+            need_layers=candidate.pooling in BLOCK_POOLINGS,
         )
         for split in SPLITS
     }
@@ -175,11 +193,16 @@ def evaluate_candidate(
     views = {split: features[split].view_embeddings(candidate.pooling, candidate.views) for split in SPLITS}
     final = {split: features[split].embeddings(candidate.pooling, candidate.views) for split in SPLITS}
 
+    dev_frame = pd.concat([frames[ds.TRAIN], frames[ds.VALIDATION]], ignore_index=True)
     dev_views = np.concatenate([views[ds.TRAIN], views[ds.VALIDATION]], axis=1)
     dev_labels = np.concatenate([labels[ds.TRAIN], labels[ds.VALIDATION]])
-    dev_groups = np.concatenate([frames[ds.TRAIN]["group_id"], frames[ds.VALIDATION]["group_id"]])
-    cv_accuracy, fold_accuracies, cv_loss, cv_c = cross_validate(
-        dev_views, dev_labels, dev_groups, candidate.train_on_views, pipeline, experiments.cv_folds
+    cv = cross_validate(
+        dev_views,
+        dev_labels,
+        dev_frame["group_id"].to_numpy(),
+        candidate.train_on_views,
+        pipeline,
+        experiments.cv_folds,
     )
 
     x_fit, y_fit = training_rows(views[ds.TRAIN], labels[ds.TRAIN], candidate.train_on_views)
@@ -195,25 +218,24 @@ def evaluate_candidate(
         x_fit, y_fit, holdout_c, pipeline.classifier.class_weight, pipeline.classifier.max_iter, pipeline.seed
     )
     correct = {split: model.predict(final[split]) == labels[split] for split in SPLITS}
-    test_frame = frames[ds.TEST]
-    errors = test_frame.loc[~correct[ds.TEST], "fragment_type"].value_counts()
     return {
         "id": rung_id,
         "title": title,
         "hypothesis": hypothesis,
         "change": change,
         "config": candidate.model_dump(),
-        "cv_accuracy": cv_accuracy,
-        "cv_fold_accuracies": fold_accuracies,
-        "cv_log_loss": cv_loss,
-        "cv_c": cv_c,
+        "cv_accuracy": cv.accuracy,
+        "cv_fold_accuracies": cv.fold_accuracies,
+        "cv_log_loss": cv.log_loss,
+        "cv_c": cv.c,
+        "cv_errors_by_fragment": _errors_by_fragment(dev_frame, cv.correct),
         "holdout_c": holdout_c,
         "validation_accuracy": float(correct[ds.VALIDATION].mean()),
         "test_correct": int(correct[ds.TEST].sum()),
         "test_total": int(correct[ds.TEST].size),
         "heldout_correct": int(correct[ds.HELDOUT_KNOWN].sum()),
         "heldout_total": int(correct[ds.HELDOUT_KNOWN].size),
-        "test_errors_by_fragment": {str(k): int(v) for k, v in errors.items()},
+        "test_errors_by_fragment": _errors_by_fragment(frames[ds.TEST], correct[ds.TEST]),
         "embedding_dimension": int(final[ds.TRAIN].shape[1]),
         "encode_ms_per_image": 1000.0 * features[ds.TRAIN].seconds_per_view_image * candidate.views,
     }
@@ -266,6 +288,7 @@ def render_log(experiments: ExperimentsConfig, results: list[RungResult], dev_si
     details = []
     for r in results:
         errors = ", ".join(f"{k}: {v}" for k, v in r.test_errors_by_fragment.items()) or "none"
+        cv_errors = ", ".join(f"{k}: {v}" for k, v in r.cv_errors_by_fragment.items()) or "none"
         details += [
             f"### {r.id}: {r.title}",
             "",
@@ -273,6 +296,7 @@ def render_log(experiments: ExperimentsConfig, results: list[RungResult], dev_si
             f"- Configuration: `{json.dumps(r.config)}`",
             f"- Cross-validation: accuracy {_pct(r.cv_accuracy)}, folds "
             f"{', '.join(_pct(a) for a in r.cv_fold_accuracies)}, log-loss {r.cv_log_loss:.3f}, C={r.cv_c:g}",
+            f"- Out-of-fold errors by fragment type ({sum(r.cv_errors_by_fragment.values())}): {cv_errors}",
             f"- Production protocol (C={r.holdout_c:g} chosen on validation): validation "
             f"{_pct(r.validation_accuracy)}, test {r.test_correct}/{r.test_total}, held-out "
             f"{r.heldout_correct}/{r.heldout_total}",

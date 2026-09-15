@@ -11,6 +11,9 @@ Embedding recipe (all parts recorded in the embedding fingerprint):
                                  blocks, each L2-normalised and concatenated (the DINOv2
                                  multi-block linear-probe recipe; earlier blocks retain
                                  mid-level structure such as cell outlines)
+                "cls_last4_patchmean"  cls_last4 plus the mean final-layer patch token as a
+                                 fifth, equally weighted part (texture statistics of the
+                                 whole field)
   * views       number of dihedral views (1 = no test-time augmentation, up to 8)
 
 The final embedding is the L2-normalised mean of the per-view embeddings, so inner product
@@ -40,9 +43,15 @@ from ml.preprocessing.transforms import (
     to_model_input,
 )
 
-POOLINGS = ("cls", "cls_patchmean", "cls_last4")
+POOLINGS = ("cls", "cls_patchmean", "cls_last4", "cls_last4_patchmean")
+BLOCK_POOLINGS = ("cls_last4", "cls_last4_patchmean")  # need per-block CLS tokens
 LAST_BLOCKS = 4
-_POOLING_WIDTH = {"cls": 1, "cls_patchmean": 2, "cls_last4": LAST_BLOCKS}
+_POOLING_WIDTH = {
+    "cls": 1,
+    "cls_patchmean": 2,
+    "cls_last4": LAST_BLOCKS,
+    "cls_last4_patchmean": LAST_BLOCKS + 1,
+}
 
 
 def ensure_backbone(name: str, hub_id: str, revision: str, license_name: str, target: Path) -> bool:
@@ -86,19 +95,24 @@ class ViewTokens:
     cls_layers: np.ndarray | None  # (..., LAST_BLOCKS, hidden) layer-normalised CLS of the last blocks
 
 
+def _concatenate_normalised(parts: list[np.ndarray]) -> np.ndarray:
+    """L2-normalise each part, concatenate, and normalise again so every part weighs equally."""
+    return l2_normalize(np.concatenate([l2_normalize(part) for part in parts], axis=-1))
+
+
 def pool_features(tokens: ViewTokens, pooling: str) -> np.ndarray:
     """Combine raw token features into unit-length embeddings."""
     if pooling == "cls":
         return l2_normalize(tokens.cls)
     if pooling == "cls_patchmean":
-        return l2_normalize(
-            np.concatenate([l2_normalize(tokens.cls), l2_normalize(tokens.patch_mean)], axis=-1)
-        )
-    if pooling == "cls_last4":
+        return _concatenate_normalised([tokens.cls, tokens.patch_mean])
+    if pooling in BLOCK_POOLINGS:
         if tokens.cls_layers is None:
-            raise ValueError("cls_last4 pooling needs per-block CLS tokens")
-        per_block = l2_normalize(tokens.cls_layers)
-        return l2_normalize(per_block.reshape(*per_block.shape[:-2], -1))
+            raise ValueError(f"{pooling} pooling needs per-block CLS tokens")
+        parts = [tokens.cls_layers[..., block, :] for block in range(tokens.cls_layers.shape[-2])]
+        if pooling == "cls_last4_patchmean":
+            parts.append(tokens.patch_mean)
+        return _concatenate_normalised(parts)
     raise ValueError(f"unknown pooling {pooling!r}; expected one of {POOLINGS}")
 
 

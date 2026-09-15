@@ -26,6 +26,7 @@ def test_registered_ladders_are_valid_and_ordered(ladder):
     [
         ("experiments-v1", ("E1", "E3"), "experiments-v2"),
         ("experiments-v2", ("F1", "F2"), "experiments-v3"),
+        ("experiments-v3", ("G2",), "experiments-v4"),
     ],
 )
 def test_each_phase_starts_from_the_previous_selection(previous, adopted, following):
@@ -75,10 +76,9 @@ def _separable(views: int, per_class: int = 24, seed: int = 0):
 @pytest.mark.parametrize("train_on_views", [False, True])
 def test_cross_validation_on_separable_data(train_on_views):
     view_vectors, labels, groups = _separable(views=4)
-    accuracy, folds, loss, c = cross_validate(
-        view_vectors, labels, groups, train_on_views, load_pipeline_config(), folds=4
-    )
-    assert accuracy >= 0.9
-    assert len(folds) == 4 and all(0 <= f <= 1 for f in folds)
-    assert loss < 0.4
-    assert c in load_pipeline_config().classifier.c_grid
+    cv = cross_validate(view_vectors, labels, groups, train_on_views, load_pipeline_config(), folds=4)
+    assert cv.accuracy >= 0.9
+    assert len(cv.fold_accuracies) == 4 and all(0 <= f <= 1 for f in cv.fold_accuracies)
+    assert cv.log_loss < 0.4
+    assert cv.c in load_pipeline_config().classifier.c_grid
+    assert cv.correct.shape == labels.shape and cv.correct.mean() == cv.accuracy
