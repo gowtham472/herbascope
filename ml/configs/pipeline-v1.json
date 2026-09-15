@@ -1,0 +1,76 @@
+{
+  "version": "pipeline-v1",
+  "seed": 20260915,
+  "sources": {
+    "mikrobat": {
+      "name": "Mikrobat",
+      "repository": "https://github.com/alamraya/Mikrobat",
+      "commit": "063b0e557a78c4ec0ad52f5aad11250d7bce266d",
+      "reported_images": 716,
+      "license_note": "The Mikrobat repository does not include a license file."
+    },
+    "dimpsar": {
+      "name": "DIMPSAR medicinal plant classification",
+      "repository": "https://huggingface.co/datasets/Project-AgML/DIMPSAR_medicinal_plant_classification",
+      "revision": "eb460a4f3770a1be748a8ad2d4bc22301755c14a",
+      "file": "data/train-00000-of-00001.parquet",
+      "sha256": "3cd9c0cb7283a31493df255d485c3855b701d648c4f0f193528a9ad9f68d8338",
+      "license": "CC BY 4.0",
+      "reported_images": 5945
+    }
+  },
+  "encoder": {
+    "name": "DINOv2 ViT-S/14",
+    "hub_id": "facebook/dinov2-small",
+    "revision": "ed25f3a31f01632728cabb09d1542f84ab7b0056",
+    "local_dir": "dinov2_vits14",
+    "license": "Apache-2.0",
+    "batch_size": 32
+  },
+  "mikrobat_curation": {
+    "fragment_type_aliases": {
+      "epidermis bawah dengan idiobalas berupa sel minyak": "epidermis bawah dengan idioblas berupa sel minyak",
+      "epidermis bawah dan idiobls berupa sel minyak": "epidermis bawah dengan idioblas berupa sel minyak",
+      "epidermis bawah dengan sel idioblas": "epidermis bawah dengan idioblas berupa sel minyak"
+    },
+    "near_duplicate_null_percentile": 0.01,
+    "heldout_min_images": 30
+  },
+  "splits": {
+    "train": 0.7,
+    "validation": 0.15,
+    "test": 0.15
+  },
+  "dimpsar_ood": {
+    "images_per_class": 10,
+    "calibration_class_fraction": 0.5
+  },
+  "classifier": {
+    "version": "classifier-v1",
+    "c_grid": [0.01, 0.1, 1.0, 10.0, 100.0, 1000.0, 10000.0],
+    "class_weight": "balanced",
+    "max_iter": 5000
+  },
+  "references": {
+    "version": "index-v1",
+    "per_class": 20,
+    "top_k": 5
+  },
+  "quality": {
+    "version": "quality-v1",
+    "min_side": 224,
+    "lower_percentile": 1,
+    "upper_percentile": 99,
+    "tile_grid": 8,
+    "tile_floor_percentile": 10
+  },
+  "unknown": {
+    "version": "unknown-v1",
+    "target_known_acceptance": 0.95
+  },
+  "decision": {
+    "version": "decision-v1",
+    "target_known_retention": 0.95,
+    "target_selective_accuracy": 0.95
+  }
+}

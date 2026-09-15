@@ -1,0 +1,23 @@
+# Tool configuration for the Python side of the monorepo (ml/, services/api/, scripts/).
+# Dependencies are installed from requirements*.txt; nothing here is packaged.
+
+[tool.pytest.ini_options]
+testpaths = ["tests", "services/api/tests"]
+pythonpath = [".", "services/api"]
+addopts = "--import-mode=importlib -ra"
+markers = [
+    "artifacts: needs the real trained model artifacts under models/ (skipped when absent)",
+]
+
+[tool.ruff]
+line-length = 110
+target-version = "py312"
+extend-exclude = ["apps/web"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "SIM", "RUF"]
+# `ruff format` owns line length; E501 would only flag long string literals it cannot split.
+ignore = ["E501"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["app", "ml", "scripts", "tests"]
