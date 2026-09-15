@@ -96,6 +96,7 @@ class RungResult:
     cv_log_loss: float
     cv_c: float
     cv_errors_by_fragment: dict[str, int]
+    dev_images_by_fragment: dict[str, int]
     holdout_c: float
     validation_accuracy: float
     test_correct: int
@@ -103,6 +104,7 @@ class RungResult:
     heldout_correct: int
     heldout_total: int
     test_errors_by_fragment: dict[str, int]
+    test_images_by_fragment: dict[str, int]
     embedding_dimension: int
     encode_ms_per_image: float
 
@@ -164,6 +166,17 @@ def cross_validate(
 def _errors_by_fragment(frame: pd.DataFrame, correct: np.ndarray) -> dict[str, int]:
     counts = frame.loc[~correct, "fragment_type"].value_counts()
     return {str(fragment): int(count) for fragment, count in counts.items()}
+
+
+def _images_by_fragment(frame: pd.DataFrame) -> dict[str, int]:
+    return {str(fragment): int(count) for fragment, count in frame["fragment_type"].value_counts().items()}
+
+
+def _error_summary(errors: dict[str, int], totals: dict[str, int]) -> str:
+    return (
+        ", ".join(f"{fragment}: {count} of {totals[fragment]}" for fragment, count in errors.items())
+        or "none"
+    )
 
 
 def evaluate_candidate(
@@ -229,6 +242,7 @@ def evaluate_candidate(
         "cv_log_loss": cv.log_loss,
         "cv_c": cv.c,
         "cv_errors_by_fragment": _errors_by_fragment(dev_frame, cv.correct),
+        "dev_images_by_fragment": _images_by_fragment(dev_frame),
         "holdout_c": holdout_c,
         "validation_accuracy": float(correct[ds.VALIDATION].mean()),
         "test_correct": int(correct[ds.TEST].sum()),
@@ -236,6 +250,7 @@ def evaluate_candidate(
         "heldout_correct": int(correct[ds.HELDOUT_KNOWN].sum()),
         "heldout_total": int(correct[ds.HELDOUT_KNOWN].size),
         "test_errors_by_fragment": _errors_by_fragment(frames[ds.TEST], correct[ds.TEST]),
+        "test_images_by_fragment": _images_by_fragment(frames[ds.TEST]),
         "embedding_dimension": int(final[ds.TRAIN].shape[1]),
         "encode_ms_per_image": 1000.0 * features[ds.TRAIN].seconds_per_view_image * candidate.views,
     }
@@ -287,8 +302,8 @@ def render_log(experiments: ExperimentsConfig, results: list[RungResult], dev_si
         )
     details = []
     for r in results:
-        errors = ", ".join(f"{k}: {v}" for k, v in r.test_errors_by_fragment.items()) or "none"
-        cv_errors = ", ".join(f"{k}: {v}" for k, v in r.cv_errors_by_fragment.items()) or "none"
+        errors = _error_summary(r.test_errors_by_fragment, r.test_images_by_fragment)
+        cv_errors = _error_summary(r.cv_errors_by_fragment, r.dev_images_by_fragment)
         details += [
             f"### {r.id}: {r.title}",
             "",
