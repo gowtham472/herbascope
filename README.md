@@ -38,7 +38,7 @@ a deterministic, versioned policy to decide: **PRELIMINARY_PASS**, **REVIEW_REQU
 flowchart TD
     IMG[Microscopic image] --> VAL[Validate + decode]
     VAL --> Q[Image quality]
-    VAL --> PRE[Grayscale · pad to square · 518 px · 4 rotations]
+    VAL --> PRE[Grayscale · pad to square · 588 px · 4 rotations]
     PRE --> ENC[DINOv2 ViT-S/14 embedding]
     ENC --> CLS[Logistic regression]
     ENC --> RET[FAISS reference retrieval]
@@ -56,7 +56,7 @@ flowchart TD
 | Stage | What it does |
 |---|---|
 | Quality | Resolution, focus, exposure, clipping and specimen visibility, with bounds calibrated on reference training images |
-| Encoder | Frozen DINOv2 ViT-S/14 at 518 px; CLS tokens of the last 4 blocks, each L2-normalised and concatenated (1536-d), averaged over 4 rotations |
+| Encoder | Frozen DINOv2 ViT-S/14 at 588 px; CLS tokens of the last 4 blocks, each L2-normalised and concatenated (1536-d), averaged over 4 rotations |
 | Classifier | Logistic regression trained on every rotation view; C chosen by validation log-loss |
 | Retrieval | 40 curated reference micrographs (k-means medoids), exact cosine search |
 | Unknown | Distance = 1 − mean similarity to the 5 nearest references; threshold chosen to minimise out-of-distribution false acceptance while keeping ≥ 95% known acceptance |
@@ -70,37 +70,36 @@ for training or calibration:
 
 | Set | What it is | Result |
 |---|---|---|
-| `test` (72) | Mikrobat, fragment types present in the reference library | **Accuracy 95.8%** (69/72); 26 PRELIMINARY_PASS, **all correct**; all 3 misclassifications routed to REVIEW |
+| `test` (72) | Mikrobat, fragment types present in the reference library | **Accuracy 97.2%** (70/72); 19 PRELIMINARY_PASS, 18 correct; 1 of 2 misclassifications routed to REVIEW |
 | `ood_evaluation` (200) | DIMPSAR field-leaf photos, classes not used in calibration | **200/200 UNKNOWN**, 0 false passes |
-| `heldout_known` (104) | Mikrobat fragment types withheld from training and references | Accuracy 57.7%; 34 PRELIMINARY_PASS, 7 correct (see key finding) |
+| `heldout_known` (104) | Mikrobat fragment types withheld from training and references | Accuracy 57.7%; 20 PRELIMINARY_PASS, 2 correct (see key finding) |
 
 Ablation, measured on `test` and OOD:
 
 | System | Test wrong-class accepted | OOD false acceptance |
 |---|---|---|
-| Classifier only | 3 | 100% |
-| Full evidence + decision | 0 | 0% |
+| Classifier only | 2 | 100% |
+| Full evidence + decision | 1 | 0% |
 
 **Model improvement.** Pre-registered experiment ladders change one part of the embedding recipe
 per rung and adopt it only if grouped cross-validation on the development pool improves. Test and
-held-out results never decide. Each promoted selection is rebuilt and evaluated as a release:
+held-out results never decide. Each promoted selection is rebuilt and evaluated as a release.
 
 | Release | Embedding recipe | CV accuracy | Test accuracy | Test passes (correct) | Held-out wrong-class passes |
 |---|---|---|---|---|---|
 | v1 | 224 px, final-block CLS, 1 view | — | 88.9% | 24 (24) | 31 |
 | v2 | 448 px, last-4-block CLS, 4 rotations | 90.6% | 95.8% | 16 (15) | 10 |
-| v3 (current) | 518 px, last-4-block CLS, 4 rotations | 91.6% | 95.8% | 26 (26) | 27 |
+| v3 | 518 px, last-4-block CLS, 4 rotations | 91.6% | 95.8% | 26 (26) | 27 |
+| v4 (current) | 588 px, last-4-block CLS, 4 rotations | 92.0% | **97.2%** | 19 (18) | 18 |
 
-Logs: [phase 2](docs/reports/model_improvement_experiments-v2.md),
-[phase 3](docs/reports/model_improvement_experiments-v3.md). Every release rejected all 200 OOD
-images.
+Every release rejected all 200 OOD images. One analysis takes about 2.8 s on a laptop CPU.
 
 **Key finding.** Screening conclusions only transfer to fragment types represented in the
 reference library. On unseen fragment types, the classifier and retrieval can agree confidently
 on the wrong class because they share one visual representation. The release table shows this
-directly: on held-out fragment types, wrong-class passes swing between releases (31, 10, 27)
-while test passes stay correct. Calibration covers only the represented material, so the PASS
-gate is no safeguard for material the library does not contain.
+directly: on held-out fragment types, wrong-class passes swing between releases (31, 10, 27, 18).
+Calibration covers only the represented material, so the PASS gate is no safeguard for material
+the library does not contain.
 
 ## Repository layout
 
@@ -291,8 +290,8 @@ by hand.** They are written by the calibration steps into `models/`.
 | File | Expected decision | Why |
 |---|---|---|
 | `strong_evidence.png` | PRELIMINARY_PASS | Mikrobat test image; confident classifier, unanimous references, low risk |
-| `conflicting_evidence.png` | REVIEW_REQUIRED | Mikrobat test image; the classifier says sirih_merah, the reference library favours sirih |
-| `unknown.png` | UNKNOWN | DIMPSAR field photo; the classifier alone would say "sirih_merah" at 99.5% |
+| `conflicting_evidence.png` | REVIEW_REQUIRED | Held-out sirih; the classifier says sirih, the reference library favours sirih_merah |
+| `unknown.png` | UNKNOWN | DIMPSAR field photo; the classifier alone would say "sirih" at 71.5% |
 
 Offline checklist:
 1. Run `run_pipeline` once while online (it downloads datasets and DINOv2 weights).

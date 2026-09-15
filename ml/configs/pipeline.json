@@ -1,5 +1,5 @@
 {
-  "version": "pipeline-v3",
+  "version": "pipeline-v4",
   "seed": 20260915,
   "sources": {
     "mikrobat": {
@@ -20,7 +20,7 @@
     }
   },
   "encoder": {
-    "version": "encoder-v3",
+    "version": "encoder-v4",
     "backbone": {
       "name": "DINOv2 ViT-S/14",
       "hub_id": "facebook/dinov2-small",
@@ -28,7 +28,7 @@
       "local_dir": "dinov2_vits14",
       "license": "Apache-2.0"
     },
-    "input_size": 518,
+    "input_size": 588,
     "pooling": "cls_last4",
     "views": 4,
     "batch_size": 32
@@ -52,14 +52,14 @@
     "calibration_class_fraction": 0.5
   },
   "classifier": {
-    "version": "classifier-v3",
+    "version": "classifier-v4",
     "train_on_views": true,
     "c_grid": [0.01, 0.1, 1.0, 10.0, 100.0, 1000.0, 10000.0],
     "class_weight": "balanced",
     "max_iter": 5000
   },
   "references": {
-    "version": "index-v3",
+    "version": "index-v4",
     "per_class": 20,
     "top_k": 5
   },
@@ -72,11 +72,11 @@
     "tile_floor_percentile": 10
   },
   "unknown": {
-    "version": "unknown-v3",
+    "version": "unknown-v4",
     "target_known_acceptance": 0.95
   },
   "decision": {
-    "version": "decision-v3",
+    "version": "decision-v4",
     "target_known_retention": 0.95,
     "target_selective_accuracy": 0.95
   }

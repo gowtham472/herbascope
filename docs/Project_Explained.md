@@ -28,7 +28,7 @@ regression classifier, (b) exact FAISS retrieval over a curated reference librar
 reference-distance out-of-distribution detector calibrated on real data. An evidence engine
 compares these signals, and a deterministic, versioned policy produces
 `PRELIMINARY_PASS / REVIEW_REQUIRED / UNKNOWN`. The system is served by FastAPI and a
-Next.js 16 UI, and runs fully offline on a laptop CPU in about 2 s per image.
+Next.js 16 UI, and runs fully offline on a laptop CPU in about 2.8 s per image.
 
 ---
 
@@ -37,7 +37,7 @@ Next.js 16 UI, and runs fully offline on a laptop CPU in about 2 s per image.
 ### Plain language
 A normal image classifier is like a student who *must* pick an answer on a multiple-choice test,
 even when the right answer isn't on the list. Show it a photo of a leaf in a garden and it will
-still say "sirih, 83% sure", because it only knows two answers. A high percentage does not mean
+still say "sirih, 71.5% sure", because it only knows two answers. A high percentage does not mean
 the answer deserves trust.
 
 For screening medicinal material, that behaviour is dangerous. The useful questions are:
@@ -118,7 +118,7 @@ They are not independent tests, and the system never claims they are (see §6.6)
 | Upload | `POST /api/v1/analyze`, multipart field `image`, MIME allow-list (415), size cap read with a one-byte overflow check (413) | `services/api/app/api/analyze.py` |
 | Decode | Pillow `verify()`, then a full decode, a format allow-list, a 50 MP memory guard, EXIF orientation (422 on failure) | `ml/preprocessing/image_io.py` |
 | Quality | Laplacian variance, mean brightness, clipped-pixel fraction, 8×8 tile detail coverage on a 224-px short-side canvas | `ml/preprocessing/quality.py` |
-| Transform | grayscale → mean-pad to square → bicubic 518 → ImageNet normalisation (`preprocess-v1`); four rotations | `ml/preprocessing/transforms.py` |
+| Transform | grayscale → mean-pad to square → bicubic 588 → ImageNet normalisation (`preprocess-v1`); four rotations | `ml/preprocessing/transforms.py` |
 | Embedding | DINOv2 ViT-S/14; layer-normalised CLS token of each of the last 4 blocks, each L2-normalised and concatenated (1536-d), averaged over the 4 rotations and L2-normalised | `ml/encoders/dinov2_encoder.py` |
 | Classifier | `LogisticRegression.predict_proba` | `ml/classifiers/classifier.py` |
 | Retrieval | FAISS `IndexFlatIP` top-5 + similarity-weighted class vote | `ml/retrieval/faiss_store.py` |
@@ -129,7 +129,7 @@ They are not independent tests, and the system never claims they are (see §6.6)
 | Persistence | SQLite row + re-encoded PNG sample | `services/api/app/services/analysis_store.py` |
 
 Measured on the development laptop (AMD Ryzen 7 7735HS, CPU only) by `scripts.smoke_test`:
-loading all artifacts takes 0.78 s once at startup; one analysis takes about **2.2 s**, almost
+loading all artifacts takes 0.85 s once at startup; one analysis takes about **2.8 s**, almost
 all of it encoding the four rotations. The 3 s latency budget is part of every
 model-improvement experiment (§7.1).
 
@@ -156,7 +156,7 @@ comparison, DINOv2 has **22,056,576** parameters, and we train none of them.
 **Technical.**
 - **Encoder:** `facebook/dinov2-small` (ViT-S/14, 22.06 M parameters), pinned revision
   `ed25f3a`, loaded with `local_files_only=True`, run under `torch.inference_mode()`. It sees a
-  518×518 input as 37×37 = 1,369 patches plus a CLS token.
+  588×588 input as 42×42 = 1,764 patches plus a CLS token.
 - **Embedding recipe** (ADR-020): from each of the last four transformer blocks we take the CLS
   token, apply the model's final layer norm, L2-normalise it, and concatenate the four (1,536-d).
   This is repeated for the image rotated by 0°, 90°, 180° and 270°; the four vectors are averaged
@@ -179,7 +179,7 @@ One embedding is reused **three ways**:
 - the unknown detector measures its distance to the reference library.
 
 Because all three share it, we track an **embedding fingerprint**
-(`DINOv2 ViT-S/14@ed25f3a31f01|preprocess-v1|size=518|pool=cls_last4|views=4|dim=1536`) inside
+(`DINOv2 ViT-S/14@ed25f3a31f01|preprocess-v1|size=588|pool=cls_last4|views=4|dim=1536`) inside
 every saved artifact. If anyone
 swaps the model or changes preprocessing without rebuilding, the API refuses to mix incompatible
 pieces (ADR-006).
@@ -191,7 +191,7 @@ probability.
 
 **Technical.** scikit-learn `LogisticRegression`, balanced class weights. The regularisation
 strength `C` is selected from {0.01 … 10,000} by **validation log-loss**. Log-loss is a proper
-scoring rule, so it rewards honest probabilities, not just correct labels. The winner was C = 1000,
+scoring rule, so it rewards honest probabilities, not just correct labels. The winner was C = 100,
 an interior optimum. We widened the grid once, when the best value sat on its edge. The model is
 fitted on the training split only, which keeps the validation split clean for calibration. Each of
 the four rotations of a training image is a separate training row (1,364 rows from 341 images), a
@@ -222,16 +222,16 @@ many outsiders as possible while still accepting at least 95% of genuine samples
 **Technical.**
 - `distance = 1 − mean cosine similarity to the 5 nearest references`.
 - **Threshold selection**: minimise OOD false acceptance subject to known acceptance ≥ 95%. The
-  smallest feasible threshold is the *known boundary* (0.115). The false-acceptance rate stays
+  smallest feasible threshold is the *known boundary* (0.117). The false-acceptance rate stays
   constant up to the next OOD distance, so we take the midpoint of that interval to maximise the
-  margin: **0.180**.
-- **Status**: distance > 0.180 → UNKNOWN; > 0.115 → UNCERTAIN; else KNOWN.
+  margin: **0.181**.
+- **Status**: distance > 0.181 → UNKNOWN; > 0.117 → UNCERTAIN; else KNOWN.
 - **Risk**: a 1-D logistic model P(OOD | distance), fitted with balanced classes on a
   standardised feature and mapped back to raw units.
 - **Calibration data**: Mikrobat validation (74) plus DIMPSAR calibration classes (200).
   Evaluation uses a *different* set of DIMPSAR classes (200), so the result is not measured on
   data it was tuned on.
-- Measured separation: genuine validation distances max 0.151; DIMPSAR calibration min 0.244.
+- Measured separation: genuine validation distances max 0.142; DIMPSAR calibration min 0.245.
   (The absolute values are smaller than in release v1 because the richer embedding places all
   micrographs closer together; the thresholds are recalibrated with every release.)
 
@@ -269,13 +269,13 @@ decide.
 3. Otherwise, the answer is Review required, and the reason lists exactly which conditions failed.
 
 **Technical.** `ml/decision/decision_engine.py`. The policy file
-`models/configs/decision-v3.json` is calibrated on validation data:
+`models/configs/decision-v4.json` is calibrated on validation data:
 
 | Value | How it was derived | Result |
 |---|---|---|
-| `min_classifier_confidence` | smallest confidence with ≥ 95% selective accuracy on validation | 0.682 (achieved 95.8%, 97.3% coverage) |
-| `min_reference_similarity` | keeps 95% of correctly classified validation samples | 0.899 |
-| `max_unknown_risk` | unknown risk at the known boundary | 0.041 |
+| `min_classifier_confidence` | smallest confidence with ≥ 95% selective accuracy on validation | 0.627 (achieved 95.9%, 98.6% coverage) |
+| `min_reference_similarity` | keeps 95% of correctly classified validation samples | 0.897 |
+| `max_unknown_risk` | unknown risk at the known boundary | 0.042 |
 
 No model, language model or UI can override the result. The API also returns every criterion with
 its observed and required values, and the UI shows them as a table.
@@ -368,19 +368,19 @@ Measured on data never used for training or calibration
 
 | Set | Result |
 |---|---|
-| **Test** (72, fragment types in the library) | **Accuracy 95.8%** (69/72). **26 preliminary passes, all correct.** All 3 misclassified images were stopped (routed to review). |
+| **Test** (72, fragment types in the library) | **Accuracy 97.2%** (70/72). 19 preliminary passes, 18 correct. 1 of 2 misclassified images was stopped (routed to review). |
 | **DIMPSAR evaluation** (200 field photos, unseen classes) | **200/200 Unknown**, 0 false passes |
-| **Held-out known material** (104, unseen fragment types) | Accuracy 57.7%; 34 passes, only 7 correct (20.6%) |
-| **Ambiguity probe** (53) | 16 pass, 37 review, 0 unknown |
+| **Held-out known material** (104, unseen fragment types) | Accuracy 57.7%; 20 passes, only 2 correct (10.0%) |
+| **Ambiguity probe** (53) | 14 pass, 39 review, 0 unknown |
 
 **Ablation — does each layer earn its place?**
 
 | System | Test: wrong plant accepted | Field photos accepted as microscopy |
 |---|---|---|
-| A. Classifier only | 3 | 100% |
-| B. + reference agreement | 2 | 70.5% |
+| A. Classifier only | 2 | 100% |
+| B. + reference agreement | 2 | 60.5% |
 | C. + unknown detection | 2 | 0% |
-| D. Full evidence + decision | **0** | **0%** |
+| D. Full evidence + decision | **1** | **0%** |
 
 **The honest key finding.** On fragment types that are *not* in the reference library, the system
 can pass the wrong plant. Held-out sirih_merah xylem was predicted as sirih for 44 of 53 images.
@@ -390,7 +390,7 @@ result's limitations, is that **screening conclusions only transfer to fragment 
 in the reference library.** This tells a real deployment exactly what to fix: expand the library
 to cover every structure that will be screened.
 
-### 7.1 How we improved accuracy from 88.9% to 95.8%
+### 7.1 How we improved accuracy from 88.9% to 97.2%
 
 **Plain language.** The first release was right on 88.9% of test images. To improve it without
 fooling ourselves, we wrote each idea down *before* trying it, together with the rule that would
@@ -405,24 +405,23 @@ higher resolution, and reading several of its internal layers instead of only th
 did not: a bigger DINOv2 model (lower score and slower), more views of the same image, and ideas
 that raised test accuracy but not the cross-validation score, which we therefore did not keep.
 
-**Technical.** ADR-022 and the generated logs
-[`reports/model_improvement_experiments-v2.md`](reports/model_improvement_experiments-v2.md) and
-[`reports/model_improvement_experiments-v3.md`](reports/model_improvement_experiments-v3.md).
+**Technical.** ADR-022 and the generated logs `reports/model_improvement_experiments-v*.md`.
 
 | Release | Recipe | Grouped 5-fold CV accuracy | Test accuracy | Test passes (correct) | Held-out passes (correct) |
 |---|---|---|---|---|---|
 | v1 | 224 px, final-block CLS, 1 view | — | 88.9% (64/72) | 24 (24) | 52 (21) |
 | v2 | 448 px, last-4-block CLS, 4 rotations, trained on every view | 90.6% | 95.8% (69/72) | 16 (15) | 17 (7) |
-| v3 | 518 px, last-4-block CLS, 4 rotations, trained on every view | **91.6%** | **95.8% (69/72)** | **26 (26)** | 34 (7) |
+| v3 | 518 px, last-4-block CLS, 4 rotations, trained on every view | 91.6% | 95.8% (69/72) | 26 (26) | 34 (7) |
+| v4 | 588 px, last-4-block CLS, 4 rotations, trained on every view | **92.0%** | **97.2% (70/72)** | 19 (18) | 20 (2) |
 
 **What we report instead of hiding.**
 - *Passes do not follow accuracy.* A PASS needs all five nearest references to be the predicted
-  plant. The 40 references are re-selected by k-means in every new embedding, so the share of test
-  samples with that unanimous agreement went 33.3% → 22.2% → 37.5% across releases, and test
-  passes went 24 → 16 → 26.
-- *Held-out fragment types stay unsafe.* Wrong-class passes on them went 31 → 10 → 27. Calibration
-  only sees material the library represents, so no release controls this; it is the documented
-  limitation, measured three times.
+  plant. The 40 references are re-selected by k-means in every new embedding, so the share of
+  test samples with that unanimous agreement went 33.3% → 22.2% → 37.5% → 27.8% across releases,
+  and test passes went 24 → 16 → 26 → 19.
+- *Held-out fragment types stay unsafe.* Wrong-class passes on them went 31 → 10 → 27 → 18.
+  Calibration only sees material the library represents, so no release controls this; it is the
+  documented limitation, measured four times.
 - We did not re-tune thresholds on test or held-out data to improve any of these numbers.
 
 ---
@@ -477,8 +476,8 @@ research script. Its constructor takes its components (dependency injection), so
 real logic with a small fake encoder.
 
 ### 8.3 Artifacts are replaceable and self-checking
-- Every artifact records the embedding fingerprint and versions: `encoder-v3`, `classifier-v3`,
-  `index-v3`, `unknown-v3`, `quality-v1`, `decision-v3`, `preprocess-v1`.
+- Every artifact records the embedding fingerprint and versions: `encoder-v4`, `classifier-v4`,
+  `index-v4`, `unknown-v4`, `quality-v1`, `decision-v4`, `preprocess-v1`.
 - `models/manifest.json` lists every artifact of the release with its SHA-256 (ADR-021).
 - On startup the pipeline checks the hashes, that the fingerprints match and that the calibration
   was fitted on the loaded index. If not, it refuses (`ArtifactMismatchError`).
@@ -539,7 +538,7 @@ stays browsable. The system never shows a fake or placeholder prediction.
    failure is reported in the UI and docs instead of tuned away.
 6. **An ambiguity probe.** Byte-identical images labelled as two species are kept as their own
    evaluation set, showing what the pipeline can and cannot detect.
-7. **An ablation that proves each layer adds value** (classifier only → full system: 3 → 0 wrong
+7. **An ablation that proves each layer adds value** (classifier only → full system: 2 → 1 wrong
    passes on test, 100% → 0% false acceptance of field photos).
 8. **One pipeline for serving and evaluation**, so reported metrics are the app's real behaviour.
 9. **Embedding fingerprints and version cross-checks**, so incompatible artifacts can never be
