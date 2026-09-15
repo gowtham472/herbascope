@@ -21,7 +21,11 @@ export function SystemStatus() {
     <section aria-labelledby="system-status" aria-busy={state.status === "loading"} className="rounded-xl border border-line bg-surface p-5 shadow-sm">
       <div className="flex items-center justify-between gap-3">
         <h2 id="system-status" className="flex items-center gap-2 text-sm font-semibold text-ink">
-          <PulseIcon aria-hidden="true" weight="bold" className="size-4 text-brand-600" />
+          <PulseIcon
+            aria-hidden="true"
+            weight="bold"
+            className={`size-4 text-brand-600 ${state.status === "success" && state.data.status === "ok" ? "heartbeat" : ""}`}
+          />
           System status
         </h2>
         {state.status === "success" ? (
@@ -35,8 +39,8 @@ export function SystemStatus() {
       </div>
       {state.status === "loading" ? (
         <div className="mt-4 space-y-2" aria-hidden="true">
-          <div className="h-4 w-3/4 animate-pulse rounded bg-canvas" />
-          <div className="h-4 w-1/2 animate-pulse rounded bg-canvas" />
+          <div className="skeleton h-4 w-3/4 rounded" />
+          <div className="skeleton h-4 w-1/2 rounded" />
         </div>
       ) : state.data.model ? (
         <dl className="mt-4 grid grid-cols-2 gap-3 text-sm">

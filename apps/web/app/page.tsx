@@ -52,16 +52,20 @@ const NOT_CLAIMED = [
 export default function HomePage() {
   return (
     <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6">
-      <section className="grid items-center gap-10 lg:grid-cols-[1.4fr_1fr]">
+      <section className="hero-field grid items-center gap-10 lg:grid-cols-[1.4fr_1fr]">
         <div>
-          <p className="text-sm font-semibold uppercase tracking-wide text-brand-600">Microscopic medicinal-plant screening</p>
-          <h1 className="mt-3 text-4xl font-semibold tracking-tight text-ink sm:text-5xl">{HEADLINE}</h1>
-          <p className="mt-5 max-w-2xl text-lg text-muted">
+          <p className="fade-in text-sm font-semibold uppercase tracking-wide text-brand-600">
+            Microscopic medicinal-plant screening
+          </p>
+          <h1 className="fade-in mt-3 text-4xl font-semibold tracking-tight text-ink [animation-delay:60ms] sm:text-5xl">
+            {HEADLINE}
+          </h1>
+          <p className="fade-in mt-5 max-w-2xl text-lg text-muted [animation-delay:120ms]">
             HerbaScope X analyses a microscopic sample, compares the prediction against known reference material,
             estimates unknown risk, and decides whether the visual evidence is strong enough for a preliminary
             screening result - or whether it is not.
           </p>
-          <div className="mt-8 flex flex-wrap gap-3">
+          <div className="fade-in mt-8 flex flex-wrap gap-3 [animation-delay:180ms]">
             <Link
               href="/analyze"
               className="press group inline-flex items-center gap-2 rounded-lg bg-brand-600 px-5 py-2.5 font-medium text-white shadow-sm hover:bg-brand-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600"
