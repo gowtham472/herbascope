@@ -42,7 +42,7 @@ export function ReferenceViewer({ match, sample, onClose }: ReferenceViewerProps
         // The dialog element itself is the backdrop area around the panel.
         if (event.target === ref.current) onClose();
       }}
-      className="dialog-panel m-auto w-[min(56rem,92vw)] rounded-xl border border-line bg-surface p-0 text-ink shadow-xl backdrop:bg-ink/50"
+      className="dialog-panel m-auto w-[min(56rem,calc(100%-2rem))] max-h-[92dvh] overflow-y-auto rounded-xl border border-line bg-surface p-0 text-ink shadow-xl backdrop:bg-ink/50"
     >
       {match ? (
         <div className="flex flex-col">

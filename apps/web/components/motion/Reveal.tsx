@@ -54,8 +54,11 @@ export function Reveal({ children, index = 0, className, as: Tag = "div" }: Reve
     };
   }, [index]);
 
+  // `min-w-0`: this wrapper usually sits directly inside a grid or flex container, where the
+  // default `min-width: auto` would let wide content (a long filename, a table) push the
+  // column past the viewport.
   return (
-    <Tag ref={ref} data-reveal className={className}>
+    <Tag ref={ref} data-reveal className={`min-w-0 ${className ?? ""}`}>
       {children}
     </Tag>
   );
