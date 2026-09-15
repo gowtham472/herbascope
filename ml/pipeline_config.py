@@ -66,7 +66,7 @@ class EncoderConfig(_Strict):
     version: str
     backbone: Backbone
     input_size: int = Field(gt=0, multiple_of=14)
-    pooling: Literal["cls", "cls_patchmean"]
+    pooling: Literal["cls", "cls_patchmean", "cls_last4"]
     views: int = Field(ge=1, le=8)
     batch_size: int = Field(gt=0)
 

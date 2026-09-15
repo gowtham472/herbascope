@@ -6,7 +6,9 @@ pooling and the number of views are applied afterwards with the production funct
 embeddings the production pipeline would compute.
 
 Layout: models/experiments/features/<backbone dir>_<input size>/<split>.npz
-        (cls [views, N, hidden], patch_mean [views, N, hidden], image_ids, revision, seconds)
+        (cls [views, N, hidden], patch_mean [views, N, hidden], cls_layers [views, N, blocks,
+        hidden], image_ids, revision, seconds). Caches written before per-block CLS tokens were
+        recorded remain valid for recipes that do not need them.
 """
 
 from __future__ import annotations
@@ -18,7 +20,7 @@ from pathlib import Path
 import numpy as np
 
 from ml import paths
-from ml.encoders.dinov2_encoder import Dinov2Encoder, ensure_backbone, l2_normalize, pool_features
+from ml.encoders.dinov2_encoder import Dinov2Encoder, ViewTokens, ensure_backbone, l2_normalize, pool_features
 from ml.pipeline_config import Backbone
 from ml.preprocessing.image_io import load_image_file
 from ml.training import datasets as ds
@@ -28,13 +30,18 @@ FEATURES_DIR = paths.MODELS_DIR / "experiments" / "features"
 
 @dataclass(frozen=True)
 class TokenFeatures:
-    cls: np.ndarray  # (views, N, hidden)
-    patch_mean: np.ndarray  # (views, N, hidden)
+    tokens: ViewTokens  # leading axes (views, N)
     image_ids: list[str]
     seconds_per_view_image: float
 
     def view_embeddings(self, pooling: str, views: int) -> np.ndarray:
-        return pool_features(self.cls[:views], self.patch_mean[:views], pooling)
+        layers = self.tokens.cls_layers
+        subset = ViewTokens(
+            self.tokens.cls[:views],
+            self.tokens.patch_mean[:views],
+            None if layers is None else layers[:views],
+        )
+        return pool_features(subset, pooling)
 
     def embeddings(self, pooling: str, views: int) -> np.ndarray:
         return l2_normalize(self.view_embeddings(pooling, views).mean(axis=0))
@@ -45,7 +52,7 @@ def _cache_path(backbone: Backbone, input_size: int, split: str) -> Path:
 
 
 def load_features(
-    backbone: Backbone, input_size: int, split: str, views: int, batch_size: int
+    backbone: Backbone, input_size: int, split: str, views: int, batch_size: int, need_layers: bool
 ) -> TokenFeatures:
     """Return cached token features, encoding (and downloading the backbone) only when needed."""
     frame = ds.load_split(split)
@@ -53,12 +60,17 @@ def load_features(
     location = _cache_path(backbone, input_size, split)
     if location.is_file():
         with np.load(location, allow_pickle=False) as cached:
+            has_layers = "cls_layers" in cached.files
             if (
                 cached["image_ids"].tolist() == image_ids
                 and str(cached["revision"]) == backbone.revision
                 and cached["cls"].shape[0] >= views
+                and (has_layers or not need_layers)
             ):
-                return TokenFeatures(cached["cls"], cached["patch_mean"], image_ids, float(cached["seconds"]))
+                tokens = ViewTokens(
+                    cached["cls"], cached["patch_mean"], cached["cls_layers"] if has_layers else None
+                )
+                return TokenFeatures(tokens, image_ids, float(cached["seconds"]))
 
     weights_dir = paths.PRETRAINED_DIR / backbone.local_dir
     ensure_backbone(backbone.name, backbone.hub_id, backbone.revision, backbone.license, weights_dir)
@@ -67,15 +79,19 @@ def load_features(
     started = time.perf_counter()
     per_view = [encoder.token_features(images, view) for view in range(views)]
     seconds = (time.perf_counter() - started) / (views * len(images))
-    cls = np.stack([view[0] for view in per_view])
-    patch_mean = np.stack([view[1] for view in per_view])
+    tokens = ViewTokens(
+        np.stack([view.cls for view in per_view]),
+        np.stack([view.patch_mean for view in per_view]),
+        np.stack([view.cls_layers for view in per_view]),
+    )
     location.parent.mkdir(parents=True, exist_ok=True)
     np.savez(
         location,
-        cls=cls,
-        patch_mean=patch_mean,
+        cls=tokens.cls,
+        patch_mean=tokens.patch_mean,
+        cls_layers=tokens.cls_layers,
         image_ids=np.array(image_ids, dtype=np.str_),
         revision=np.array(backbone.revision),
         seconds=np.array(seconds),
     )
-    return TokenFeatures(cls, patch_mean, image_ids, seconds)
+    return TokenFeatures(tokens, image_ids, seconds)

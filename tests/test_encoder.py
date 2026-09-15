@@ -1,28 +1,42 @@
 import numpy as np
 import pytest
 
-from ml.encoders.dinov2_encoder import EncoderSettings, l2_normalize, pool_features
+from ml.encoders.dinov2_encoder import LAST_BLOCKS, EncoderSettings, ViewTokens, l2_normalize, pool_features
 from ml.training.train_classifier import training_rows
 
 
+def _tokens(cls, patch, layers=None) -> ViewTokens:
+    return ViewTokens(np.array(cls, dtype=np.float32), np.array(patch, dtype=np.float32), layers)
+
+
 def test_cls_pooling_is_unit_length_cls_token():
-    cls = np.array([[3.0, 4.0]], dtype=np.float32)
-    patch = np.array([[1.0, 0.0]], dtype=np.float32)
-    assert np.allclose(pool_features(cls, patch, "cls"), [[0.6, 0.8]])
+    assert np.allclose(pool_features(_tokens([[3.0, 4.0]], [[1.0, 0.0]]), "cls"), [[0.6, 0.8]])
 
 
 def test_cls_patchmean_pooling_weights_both_parts_equally():
-    cls = np.array([[10.0, 0.0]], dtype=np.float32)
-    patch = np.array([[0.0, 0.5]], dtype=np.float32)
-    pooled = pool_features(cls, patch, "cls_patchmean")
+    pooled = pool_features(_tokens([[10.0, 0.0]], [[0.0, 0.5]]), "cls_patchmean")
     assert pooled.shape == (1, 4)
     assert np.allclose(pooled, [[1, 0, 0, 1]] / np.sqrt(2))
     assert np.allclose(np.linalg.norm(pooled, axis=1), 1.0)
 
 
+def test_cls_last4_pooling_concatenates_normalised_blocks():
+    layers = np.zeros((2, 3, LAST_BLOCKS, 2), dtype=np.float32)  # (views, N, blocks, hidden)
+    for block in range(LAST_BLOCKS):
+        layers[..., block, block % 2] = 10.0 * (block + 1)
+    pooled = pool_features(_tokens(np.ones((2, 3, 2)), np.ones((2, 3, 2)), layers), "cls_last4")
+    assert pooled.shape == (2, 3, 2 * LAST_BLOCKS)
+    assert np.allclose(pooled[0, 0], np.array([1, 0, 0, 1, 1, 0, 0, 1]) / 2)
+
+
+def test_cls_last4_pooling_requires_block_tokens():
+    with pytest.raises(ValueError, match="per-block"):
+        pool_features(_tokens([[1.0, 0.0]], [[1.0, 0.0]]), "cls_last4")
+
+
 def test_pooling_rejects_unknown_recipe():
     with pytest.raises(ValueError, match="unknown pooling"):
-        pool_features(np.ones((1, 2)), np.ones((1, 2)), "max")
+        pool_features(_tokens([[1.0, 1.0]], [[1.0, 1.0]]), "max")
 
 
 def test_l2_normalize_handles_view_axis():

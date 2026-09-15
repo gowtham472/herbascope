@@ -1,0 +1,46 @@
+{
+  "version": "experiments-v2",
+  "registered_at": "2026-09-15",
+  "objective": "Phase 2, registered after the experiments-v1 results and disclosed as such. Phase 1 selected ViT-S/14 at 308 px with dihedral augmentation (E3). A larger backbone (E4, ViT-B/14) lowered cross-validated accuracy, and the remaining test errors are confusions between epidermis preparations of the two species, whose distinguishing structures (stomata, calcium oxalate crystals) span few patches. Phase 2 therefore tests ways to read finer detail without a larger backbone, within the same latency budget.",
+  "primary_metric": "Out-of-fold accuracy from grouped, stratified 5-fold cross-validation on the development pool (train + validation splits).",
+  "adoption_rule": "Rungs are evaluated in the registered order, each applying its change to the best configuration adopted so far. A rung is adopted if its encoding time fits the latency budget and its out-of-fold accuracy is higher than the current best, or equal with a lower out-of-fold log-loss. Rungs over the latency budget are evaluated and reported but cannot be adopted. Validation, test and held-out results are reported for every rung and are never used to decide adoption.",
+  "latency_budget_ms": 3000,
+  "latency_rationale": "Interactive screening: encoding one uploaded image (all views) must take at most 3 s on the reference laptop CPU (AMD Ryzen 7 7735HS).",
+  "cv_folds": 5,
+  "feature_views": 8,
+  "backbones": {
+    "vits14": {
+      "name": "DINOv2 ViT-S/14",
+      "hub_id": "facebook/dinov2-small",
+      "revision": "ed25f3a31f01632728cabb09d1542f84ab7b0056",
+      "local_dir": "dinov2_vits14",
+      "license": "Apache-2.0"
+    }
+  },
+  "baseline": {
+    "id": "F0",
+    "title": "Phase 1 selection (E3): ViT-S/14, 308 px, CLS, 8 dihedral views",
+    "hypothesis": "Reference point carried over from experiments-v1.",
+    "config": {
+      "backbone": "vits14",
+      "input_size": 308,
+      "pooling": "cls",
+      "views": 8,
+      "train_on_views": true
+    }
+  },
+  "ladder": [
+    {
+      "id": "F1",
+      "title": "Multi-block CLS pooling (last 4 blocks)",
+      "hypothesis": "CLS tokens of earlier transformer blocks retain mid-level structure (cell outlines, stomatal and crystal shapes) that the final block abstracts away; concatenating the last four blocks is DINOv2's own linear-probe recipe.",
+      "change": {"pooling": "cls_last4"}
+    },
+    {
+      "id": "F2",
+      "title": "Encoder resolution 448 px with four rotation views",
+      "hypothesis": "Stomata and crystals span few patches at 308 px; 448 px (32 x 32 patches) resolves them. Four rotations keep encoding within the latency budget (measured 1,566 ms; eight views would take 3,133 ms).",
+      "change": {"input_size": 448, "views": 4}
+    }
+  ]
+}

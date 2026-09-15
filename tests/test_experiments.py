@@ -1,23 +1,38 @@
 import numpy as np
 import pytest
 
+from ml import paths
 from ml.experiments.run_experiments import Candidate, cross_validate, improves, load_experiments_config
 from ml.pipeline_config import load_pipeline_config
 
+LADDERS = sorted((paths.REPO_ROOT / "ml" / "configs").glob("experiments-v*.json"))
 
-def test_registered_ladder_is_valid_and_ordered():
-    experiments = load_experiments_config()
-    assert experiments.baseline.id == "E0"
-    ids = [rung.id for rung in experiments.ladder]
+
+@pytest.mark.parametrize("ladder", LADDERS, ids=lambda path: path.stem)
+def test_registered_ladders_are_valid_and_ordered(ladder):
+    experiments = load_experiments_config(ladder)
+    assert experiments.version == ladder.stem
+    ids = [experiments.baseline.id] + [rung.id for rung in experiments.ladder]
     assert ids == sorted(ids) and len(set(ids)) == len(ids)
     config = experiments.baseline.config.model_dump()
+    assert config["backbone"] in experiments.backbones
     for rung in experiments.ladder:
         config = Candidate(**{**config, **rung.change}).model_dump()
         assert config["backbone"] in experiments.backbones
 
 
+def test_phase_two_starts_from_the_phase_one_selection():
+    phase_one = load_experiments_config(paths.REPO_ROOT / "ml" / "configs" / "experiments-v1.json")
+    phase_two = load_experiments_config(paths.REPO_ROOT / "ml" / "configs" / "experiments-v2.json")
+    selected = phase_one.baseline.config.model_dump()
+    for rung_id in ("E1", "E3"):  # rungs adopted in experiments-v1
+        rung = next(r for r in phase_one.ladder if r.id == rung_id)
+        selected = {**selected, **rung.change}
+    assert phase_two.baseline.config.model_dump() == selected
+
+
 def test_ladder_change_must_stay_valid():
-    baseline = load_experiments_config().baseline.config.model_dump()
+    baseline = load_experiments_config(LADDERS[0]).baseline.config.model_dump()
     with pytest.raises(ValueError):
         Candidate(**{**baseline, "input_size": 300})
 

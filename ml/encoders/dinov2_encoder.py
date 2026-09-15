@@ -5,8 +5,12 @@ Embedding recipe (all parts recorded in the embedding fingerprint):
                 its position embeddings, so resolutions above 224 are supported)
   * pooling     "cls"            layer-normalised CLS token (``pooler_output``)
                 "cls_patchmean"  CLS token concatenated with the mean of the final-layer
-                                 patch tokens, each L2-normalised (the DINOv2 linear-probe
-                                 recipe; patch tokens carry local texture detail)
+                                 patch tokens, each L2-normalised (patch tokens carry local
+                                 texture detail)
+                "cls_last4"      layer-normalised CLS tokens of the last four transformer
+                                 blocks, each L2-normalised and concatenated (the DINOv2
+                                 multi-block linear-probe recipe; earlier blocks retain
+                                 mid-level structure such as cell outlines)
   * views       number of dihedral views (1 = no test-time augmentation, up to 8)
 
 The final embedding is the L2-normalised mean of the per-view embeddings, so inner product
@@ -36,7 +40,9 @@ from ml.preprocessing.transforms import (
     to_model_input,
 )
 
-POOLINGS = ("cls", "cls_patchmean")
+POOLINGS = ("cls", "cls_patchmean", "cls_last4")
+LAST_BLOCKS = 4
+_POOLING_WIDTH = {"cls": 1, "cls_patchmean": 2, "cls_last4": LAST_BLOCKS}
 
 
 def ensure_backbone(name: str, hub_id: str, revision: str, license_name: str, target: Path) -> bool:
@@ -71,12 +77,28 @@ def l2_normalize(features: np.ndarray) -> np.ndarray:
     return (features / np.clip(norms, 1e-12, None)).astype(np.float32)
 
 
-def pool_features(cls_tokens: np.ndarray, patch_means: np.ndarray, pooling: str) -> np.ndarray:
-    """Combine raw token features (..., hidden) into unit-length embeddings."""
+@dataclass(frozen=True)
+class ViewTokens:
+    """Raw token features for one or more views; leading axes are shared by all fields."""
+
+    cls: np.ndarray  # (..., hidden) layer-normalised CLS token of the final block
+    patch_mean: np.ndarray  # (..., hidden) mean final-block patch token
+    cls_layers: np.ndarray | None  # (..., LAST_BLOCKS, hidden) layer-normalised CLS of the last blocks
+
+
+def pool_features(tokens: ViewTokens, pooling: str) -> np.ndarray:
+    """Combine raw token features into unit-length embeddings."""
     if pooling == "cls":
-        return l2_normalize(cls_tokens)
+        return l2_normalize(tokens.cls)
     if pooling == "cls_patchmean":
-        return l2_normalize(np.concatenate([l2_normalize(cls_tokens), l2_normalize(patch_means)], axis=-1))
+        return l2_normalize(
+            np.concatenate([l2_normalize(tokens.cls), l2_normalize(tokens.patch_mean)], axis=-1)
+        )
+    if pooling == "cls_last4":
+        if tokens.cls_layers is None:
+            raise ValueError("cls_last4 pooling needs per-block CLS tokens")
+        per_block = l2_normalize(tokens.cls_layers)
+        return l2_normalize(per_block.reshape(*per_block.shape[:-2], -1))
     raise ValueError(f"unknown pooling {pooling!r}; expected one of {POOLINGS}")
 
 
@@ -118,7 +140,7 @@ class Dinov2Encoder:
         self.batch_size = batch_size
         self._model = AutoModel.from_pretrained(weights_dir, local_files_only=True).eval()
         hidden = int(self._model.config.hidden_size)
-        self.dimension = hidden * (2 if pooling == "cls_patchmean" else 1)
+        self.dimension = hidden * _POOLING_WIDTH[pooling]
         self.fingerprint = (
             f"{self.name}@{source['revision'][:12]}|{PREPROCESSING_VERSION}|size={input_size}"
             f"|pool={pooling}|views={views}|dim={self.dimension}"
@@ -135,21 +157,25 @@ class Dinov2Encoder:
         )
 
     @torch.inference_mode()
-    def token_features(self, images: list[Image.Image], view: int) -> tuple[np.ndarray, np.ndarray]:
-        """Raw (N, hidden) CLS tokens and mean patch tokens for one dihedral view."""
-        cls_parts, patch_parts = [], []
+    def token_features(self, images: list[Image.Image], view: int) -> ViewTokens:
+        """Raw token features of every image for one dihedral view (leading axis N)."""
+        cls_parts, patch_parts, layer_parts = [], [], []
         for start in range(0, len(images), self.batch_size):
             chunk = images[start : start + self.batch_size]
             batch = np.stack([to_model_input(dihedral_view(image, view), self.input_size) for image in chunk])
-            outputs = self._model(pixel_values=torch.from_numpy(batch))
+            outputs = self._model(pixel_values=torch.from_numpy(batch), output_hidden_states=True)
             cls_parts.append(outputs.pooler_output.float().numpy())
             patch_parts.append(outputs.last_hidden_state[:, 1:, :].mean(dim=1).float().numpy())
-        return np.concatenate(cls_parts), np.concatenate(patch_parts)
+            # hidden_states are pre-normalisation block outputs; apply the final layer norm to each,
+            # exactly as pooler_output does for the last block.
+            blocks = [self._model.layernorm(hidden)[:, 0] for hidden in outputs.hidden_states[-LAST_BLOCKS:]]
+            layer_parts.append(torch.stack(blocks, dim=1).float().numpy())
+        return ViewTokens(np.concatenate(cls_parts), np.concatenate(patch_parts), np.concatenate(layer_parts))
 
     def view_embeddings(self, images: list[Image.Image]) -> np.ndarray:
         """Unit-length embeddings per dihedral view, shaped (views, N, dimension)."""
         return np.stack(
-            [pool_features(*self.token_features(images, view), self.pooling) for view in range(self.views)]
+            [pool_features(self.token_features(images, view), self.pooling) for view in range(self.views)]
         )
 
     def encode_images(self, images: list[Image.Image]) -> np.ndarray:
