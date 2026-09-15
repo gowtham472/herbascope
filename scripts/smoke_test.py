@@ -26,13 +26,7 @@ from ml.training import datasets as ds
 def main(argv: list[str] | None = None) -> int:
     argv = sys.argv[1:] if argv is None else argv
     started = time.perf_counter()
-    pipeline = ScreeningPipeline.load(
-        ArtifactPaths.from_layout(
-            paths.MODELS_DIR,
-            paths.INDEXES_DIR / "references.faiss",
-            paths.INDEXES_DIR / "reference_metadata.json",
-        )
-    )
+    pipeline = ScreeningPipeline.load(ArtifactPaths.from_manifest(paths.MODELS_DIR))
     loaded = time.perf_counter()
     image_path = Path(argv[0]) if argv else ds.load_split(ds.TEST).image_paths()[0]
     result = pipeline.analyze_image(load_image_file(image_path))

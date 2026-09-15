@@ -23,7 +23,7 @@ the bundled docs in `apps/web/node_modules/next/dist/docs/` before writing front
 - Never fabricate predictions, confidences, dataset counts or thresholds. Every number
   shown to a user comes from a real artifact produced by the pipeline.
 - Thresholds are calibrated by `ml/training/calibrate_*.py` against the objectives in
-  `ml/configs/pipeline-v1.json`; never hard-code them.
+  `ml/configs/pipeline.json`; never hard-code them.
 - Classifier and reference retrieval are "complementary analyses of the same visual
   representation" — never describe them as independent evidence.
 - Held-out Mikrobat fragment groups are "held-out known-material samples", never

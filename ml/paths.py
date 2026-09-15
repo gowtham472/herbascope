@@ -8,7 +8,7 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
-CONFIG_PATH = REPO_ROOT / "ml" / "configs" / "pipeline-v1.json"
+CONFIG_PATH = REPO_ROOT / "ml" / "configs" / "pipeline.json"
 
 DATA_DIR = REPO_ROOT / "data"
 RAW_DIR = DATA_DIR / "raw"
@@ -26,3 +26,10 @@ MODEL_CONFIGS_DIR = MODELS_DIR / "configs"
 MODEL_REPORTS_DIR = MODELS_DIR / "reports"
 
 DOCS_REPORTS_DIR = REPO_ROOT / "docs" / "reports"
+
+MANIFEST_PATH = MODELS_DIR / "manifest.json"
+
+
+def model_config_path(version: str) -> Path:
+    """Versioned settings artifact, e.g. models/configs/decision-v2.json."""
+    return MODEL_CONFIGS_DIR / f"{version}.json"

@@ -25,6 +25,8 @@ those reports.
 | [017](#adr-017-no-llm) | No LLM; deterministic explanation templates |
 | [018](#adr-018-testing-strategy) | Synthetic-pipeline tests + real-artifact integration tests |
 | [019](#adr-019-docker) | Docker mounts artifacts; CPU torch; standalone Next |
+| [020](#adr-020-configurable-embedding-recipe) | Configurable embedding recipe: backbone, resolution, pooling, dihedral views |
+| [021](#adr-021-model-release-manifest) | Hash-verified model release manifest |
 
 ---
 
@@ -180,7 +182,7 @@ this size, so an approximate index would only add recall loss.
 ## ADR-009: Reproducible artifacts and what git tracks
 
 **Decision.** All external inputs are pinned (Mikrobat commit, DIMPSAR revision + SHA-256, DINOv2
-revision) and every choice lives in `ml/configs/pipeline-v1.json`. `python -m scripts.run_pipeline`
+revision) and every choice lives in `ml/configs/pipeline.json`. `python -m scripts.run_pipeline`
 rebuilds everything. Git tracks source, configs, docs and generated **reports** (`docs/reports/`).
 `data/*` and `models/*` are git-ignored except their READMEs.
 
@@ -213,8 +215,9 @@ held-out-species OOD calibration was not possible. See `models/classifiers/calib
 
 **Decision.** Six checks: resolution, focus (Laplacian variance), under- and over-exposure,
 clipped pixels, and specimen visibility (share of 8×8 tiles with detail). They are measured on a
-canvas whose short side is 224 px. Bounds are percentile 1 / 99 of the Mikrobat training images;
-`min_side = 224` is technical (the encoder input size). Any failed check makes quality `DEGRADED`.
+fixed analysis canvas whose short side is 224 px, independent of the encoder input size. Bounds
+are percentile 1 / 99 of the Mikrobat training images; `min_side = 224` is technical (the DINOv2
+pretraining resolution). Any failed check makes quality `DEGRADED`.
 
 **Why.** "Calibrated" means "atypical relative to the material the model was built from", not an
 invented optical standard. Quality can only turn PASS into REVIEW and never changes identity.
@@ -240,7 +243,7 @@ analyses of the same visual representation".
    similarity, unknown risk, HIGH agreement and ACCEPTABLE quality.
 3. Otherwise → `REVIEW_REQUIRED`, and the reason lists every failed criterion.
 
-Calibrated on validation (`models/configs/decision-v1.json`):
+Calibrated on validation (`models/configs/<decision version>.json`):
 - `min_classifier_confidence`: smallest threshold with ≥ 95% selective accuracy.
 - `min_reference_similarity`: keeps 95% of correctly classified samples.
 - `max_unknown_risk`: the risk at the known boundary.
@@ -324,3 +327,40 @@ web service only after the API health check passes.
 
 **Why.** Artifacts are reproducible and partly non-redistributable (ADR-009). CPU wheels avoid
 multi-GB CUDA layers. `NEXT_PUBLIC_*` values are inlined at build time.
+
+## ADR-020: Configurable embedding recipe
+
+**Decision.** The embedding is defined by a recipe in `ml/configs/pipeline.json` (`encoder`):
+the pinned DINOv2 backbone, the input resolution (any multiple of the 14 px patch), the pooling
+(`cls`, or `cls_patchmean`: CLS token concatenated with the mean patch token, each
+L2-normalised), and the number of dihedral views (rotations and reflections of the square)
+averaged at inference. `classifier.train_on_views` optionally trains on every view as an
+augmented row. `extract_embeddings` writes the recipe as an encoder settings artifact, and the
+fingerprint includes every recipe field.
+
+**Why.**
+- A micrograph has no canonical orientation, so all eight dihedral views are equally valid
+  observations of the same specimen. That makes them free, label-preserving augmentation and
+  test-time averaging.
+- Patch tokens keep local texture detail that the CLS token summarises away.
+- Higher resolution avoids downsampling the 300 px micrographs below their recorded detail.
+
+Making these choices configuration lets the model-improvement experiments and the production
+pipeline share one implementation, so an improvement measured in an experiment is the one that
+ships.
+
+## ADR-021: Model release manifest
+
+**Decision.** `ml.training.publish_release` loads the complete pipeline from the configured
+artifacts, which runs the fingerprint, index-version and class checks. It then writes
+`models/manifest.json` listing every artifact file with its SHA-256. The API, the evaluation and
+the smoke test locate artifacts only through the manifest, and loading re-verifies the hashes.
+
+**Why.**
+- Artifact file names are versioned (`decision-v2.json`, `encoder-v2.json`), so a fixed-path
+  layout would need code changes for every release.
+- The manifest makes a release one atomic, auditable unit.
+- A hand-edited or partially replaced artifact is rejected before it can serve.
+
+`REFERENCE_INDEX` and `REFERENCE_METADATA` are no longer environment variables: pointing the API
+at individual files could combine artifacts from different releases.

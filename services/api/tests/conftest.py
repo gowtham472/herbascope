@@ -20,8 +20,6 @@ def settings(tmp_path, synthetic):
         _env_file=None,
         model_dir=tmp_path / "models",
         data_dir=synthetic.data_dir,
-        reference_index=tmp_path / "models" / "missing.faiss",
-        reference_metadata=tmp_path / "models" / "missing.json",
         app_state_dir=tmp_path / "state",
         max_upload_mb=1,
     )

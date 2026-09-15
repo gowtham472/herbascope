@@ -3,9 +3,9 @@
 Objective: flag an image as DEGRADED when a quality signal is more extreme than the
 configured lower/upper percentile of the reference-library training images, i.e. when it is
 atypical compared with the material the model was built from. ``min_side`` is technical
-(the encoder input size) and is copied from the config rather than calibrated.
+(the DINOv2 pretraining resolution) and is copied from the config rather than calibrated.
 
-Output: models/configs/quality-v1.json
+Output: models/configs/<quality version>.json
 Usage:  python -m ml.training.calibrate_quality
 """
 
@@ -54,7 +54,7 @@ def main() -> int:
         "calibrated_on": {"dataset": "Mikrobat", "split": ds.TRAIN, "images": len(measurements)},
         "objective": (
             f"flag signals below percentile {q.lower_percentile:g} or above percentile {q.upper_percentile:g} "
-            "of the reference-library training images; min_side equals the encoder input size"
+            "of the reference-library training images; min_side is the DINOv2 pretraining resolution"
         ),
         "bounds": {k: v for k, v in asdict(bounds).items() if k != "version"},
         "training_distribution": {
@@ -67,8 +67,8 @@ def main() -> int:
             }.items()
         },
     }
-    paths.MODEL_CONFIGS_DIR.mkdir(parents=True, exist_ok=True)
-    target = paths.MODEL_CONFIGS_DIR / f"{q.version}.json"
+    target = paths.model_config_path(q.version)
+    target.parent.mkdir(parents=True, exist_ok=True)
     target.write_text(json.dumps(payload, indent=2), encoding="utf-8")
     print(json.dumps(payload["bounds"], indent=2))
     return 0

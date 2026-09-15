@@ -2,32 +2,49 @@
 
 The API, the evaluation script and the smoke test all call this class, so the behaviour
 that is evaluated is exactly the behaviour that is served.
+
+Artifacts are located through a release manifest (models/manifest.json, written by
+ml/training/publish_release.py) that lists every file with its SHA-256. Loading verifies
+the hashes, so a partially replaced or edited artifact set is rejected before it can serve.
 """
 
 from __future__ import annotations
 
+import hashlib
+import json
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Protocol
 
 import numpy as np
+from PIL import Image
 
 from ml.classifiers.classifier import EmbeddingClassifier
 from ml.decision.decision_engine import Decision, DecisionPolicy, decide
-from ml.encoders.dinov2_encoder import Dinov2Encoder
+from ml.encoders.dinov2_encoder import Dinov2Encoder, EncoderSettings
 from ml.evidence.evidence_engine import Evidence, build_evidence
 from ml.preprocessing.image_io import DecodedImage
 from ml.preprocessing.quality import QualityAssessment, QualityBounds, assess_quality, measure_quality
-from ml.preprocessing.transforms import PREPROCESSING_VERSION, to_model_input
+from ml.preprocessing.transforms import PREPROCESSING_VERSION
 from ml.retrieval.faiss_store import ReferenceIndex, summarize_matches
 from ml.uncertainty.unknown_detector import UnknownCalibration, assess_unknown
 
 MAX_CLASS_PROBABILITIES = 5
+MANIFEST_FILE = "manifest.json"
+
+
+def file_sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        while chunk := handle.read(1 << 20):
+            digest.update(chunk)
+    return digest.hexdigest()
 
 
 @dataclass(frozen=True)
 class ArtifactPaths:
-    encoder_dir: Path
+    model_dir: Path
+    encoder_settings_path: Path
     classifier_dir: Path
     index_path: Path
     index_metadata_path: Path
@@ -35,32 +52,55 @@ class ArtifactPaths:
     quality_bounds_path: Path
     decision_policy_path: Path
 
-    @classmethod
-    def from_layout(cls, model_dir: Path, index_path: Path, index_metadata_path: Path) -> ArtifactPaths:
-        return cls(
-            encoder_dir=model_dir / "pretrained" / "dinov2_vits14",
-            classifier_dir=model_dir / "classifiers",
-            index_path=index_path,
-            index_metadata_path=index_metadata_path,
-            unknown_calibration_path=model_dir / "classifiers" / "calibration.json",
-            quality_bounds_path=model_dir / "configs" / "quality-v1.json",
-            decision_policy_path=model_dir / "configs" / "decision-v1.json",
-        )
+    def files(self) -> dict[str, Path]:
+        """Every file that defines a release, keyed by role (also the manifest keys)."""
+        settings = EncoderSettings.load(self.encoder_settings_path)
+        weights = self.model_dir / "pretrained" / settings.weights_dir
+        return {
+            "encoder_settings": self.encoder_settings_path,
+            "encoder_config": weights / "config.json",
+            "encoder_weights": weights / "model.safetensors",
+            "encoder_source": weights / "SOURCE.json",
+            "classifier_model": self.classifier_dir / "classifier.joblib",
+            "classifier_labels": self.classifier_dir / "label_encoder.json",
+            "classifier_training_config": self.classifier_dir / "training_config.json",
+            "reference_index": self.index_path,
+            "reference_metadata": self.index_metadata_path,
+            "unknown_calibration": self.unknown_calibration_path,
+            "quality_bounds": self.quality_bounds_path,
+            "decision_policy": self.decision_policy_path,
+        }
 
-    def missing(self) -> list[str]:
-        required = [
-            self.encoder_dir / "config.json",
-            self.encoder_dir / "SOURCE.json",
-            self.classifier_dir / "classifier.joblib",
-            self.classifier_dir / "label_encoder.json",
-            self.classifier_dir / "training_config.json",
-            self.index_path,
-            self.index_metadata_path,
-            self.unknown_calibration_path,
-            self.quality_bounds_path,
-            self.decision_policy_path,
+    @classmethod
+    def from_manifest(cls, model_dir: Path) -> ArtifactPaths:
+        manifest_path = model_dir / MANIFEST_FILE
+        if not manifest_path.is_file():
+            raise FileNotFoundError(
+                f"Model release manifest not found at {manifest_path}; run `python -m scripts.run_pipeline`."
+            )
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        located = {role: model_dir / entry["path"] for role, entry in manifest["artifacts"].items()}
+        artifacts = cls(
+            model_dir=model_dir,
+            encoder_settings_path=located["encoder_settings"],
+            classifier_dir=located["classifier_model"].parent,
+            index_path=located["reference_index"],
+            index_metadata_path=located["reference_metadata"],
+            unknown_calibration_path=located["unknown_calibration"],
+            quality_bounds_path=located["quality_bounds"],
+            decision_policy_path=located["decision_policy"],
+        )
+        missing = [str(path) for path in located.values() if not path.is_file()]
+        if missing:
+            raise FileNotFoundError("Missing model artifacts: " + ", ".join(missing))
+        changed = [
+            role
+            for role, entry in manifest["artifacts"].items()
+            if file_sha256(located[role]) != entry["sha256"]
         ]
-        return [str(path) for path in required if not path.is_file()]
+        if changed:
+            raise ArtifactMismatchError(f"Artifacts changed since the release was published: {changed}")
+        return artifacts
 
 
 @dataclass(frozen=True)
@@ -104,7 +144,7 @@ class Encoder(Protocol):
     name: str
     fingerprint: str
 
-    def encode(self, batch: np.ndarray) -> np.ndarray: ...
+    def encode_images(self, images: list[Image.Image]) -> np.ndarray: ...
 
 
 class ScreeningPipeline:
@@ -140,11 +180,15 @@ class ScreeningPipeline:
     @classmethod
     def load(cls, artifacts: ArtifactPaths) -> ScreeningPipeline:
         """Load every artifact once (the API calls this at startup)."""
-        missing = artifacts.missing()
+        if not artifacts.encoder_settings_path.is_file():
+            raise FileNotFoundError(f"Missing model artifacts: {artifacts.encoder_settings_path}")
+        missing = [str(path) for path in artifacts.files().values() if not path.is_file()]
         if missing:
             raise FileNotFoundError("Missing model artifacts: " + ", ".join(missing))
         return cls(
-            encoder=Dinov2Encoder(artifacts.encoder_dir),
+            encoder=Dinov2Encoder.from_settings(
+                artifacts.model_dir, EncoderSettings.load(artifacts.encoder_settings_path)
+            ),
             classifier=EmbeddingClassifier.load(artifacts.classifier_dir),
             index=ReferenceIndex.load(artifacts.index_path, artifacts.index_metadata_path),
             unknown_calibration=UnknownCalibration.load(artifacts.unknown_calibration_path),
@@ -176,7 +220,7 @@ class ScreeningPipeline:
         )
 
     def embed(self, decoded: DecodedImage) -> np.ndarray:
-        return self.encoder.encode(to_model_input(decoded.image)[None, ...])[0]
+        return self.encoder.encode_images([decoded.image])[0]
 
     def analyze_embedding(self, embedding: np.ndarray, quality: QualityAssessment) -> ScreeningResult:
         return self.analyze_embeddings(embedding[None, :], [quality])[0]

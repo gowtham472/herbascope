@@ -104,7 +104,7 @@ def test_malformed_ids_are_rejected(client):
 def test_degraded_mode_without_artifacts(degraded_client):
     health = degraded_client.get(f"{API}/health").json()
     assert health["status"] == "degraded"
-    assert "Missing model artifacts" in health["detail"]
+    assert "manifest not found" in health["detail"]
     response = _upload(degraded_client, png_bytes(texture("alpha", 0)))
     assert response.status_code == 503
     assert "run_pipeline" in response.json()["detail"]
@@ -120,12 +120,9 @@ def test_cors_allows_configured_frontend_origin(client):
     assert response.headers["access-control-allow-origin"] == "http://localhost:3000"
 
 
-REAL_SETTINGS = Settings(_env_file=None)
-
-
 @pytest.mark.artifacts
 @pytest.mark.skipif(
-    bool(REAL_SETTINGS.artifacts.missing()) or not ds.split_path(ds.TEST).is_file(),
+    not paths.MANIFEST_PATH.is_file() or not ds.split_path(ds.TEST).is_file(),
     reason="real model artifacts not built; run `python -m scripts.run_pipeline`",
 )
 def test_real_artifacts_end_to_end(tmp_path, monkeypatch):

@@ -3,6 +3,10 @@
 C is chosen by validation log-loss; the final model is fitted on the training split only so
 the validation split stays unseen for unknown and decision calibration.
 
+With ``classifier.train_on_views`` every dihedral view of each training image is a training
+row (orientation augmentation). Validation and inference always use the view-averaged
+embedding, exactly as the API computes it.
+
 Outputs: models/classifiers/{classifier.joblib, label_encoder.json, training_config.json}
 Usage:   python -m ml.training.train_classifier
 """
@@ -27,6 +31,16 @@ def _file_sha256(name: str) -> str:
     return hashlib.sha256(ds.split_path(name).read_bytes()).hexdigest()
 
 
+def training_rows(
+    embeddings: ds.SplitEmbeddings, labels: np.ndarray, on_views: bool
+) -> tuple[np.ndarray, np.ndarray]:
+    """Design matrix for fitting: view-averaged vectors, or every dihedral view as its own row."""
+    if not on_views:
+        return embeddings.vectors, labels
+    views = embeddings.view_vectors
+    return views.reshape(-1, views.shape[-1]), np.tile(labels, views.shape[0])
+
+
 def main() -> int:
     config = load_pipeline_config()
     train = ds.load_embeddings(ds.TRAIN)
@@ -38,9 +52,10 @@ def main() -> int:
     index_of = {name: i for i, name in enumerate(classes)}
     y_train = train.split.frame["class_name"].map(index_of).to_numpy()
     y_validation = validation.split.frame["class_name"].map(index_of).to_numpy()
+    x_fit, y_fit = training_rows(train, y_train, config.classifier.train_on_views)
 
     c_value, scores = select_regularization(
-        (train.vectors, y_train),
+        (x_fit, y_fit),
         (validation.vectors, y_validation),
         config.classifier.c_grid,
         config.classifier.class_weight,
@@ -48,12 +63,7 @@ def main() -> int:
         config.seed,
     )
     model = fit_logistic_regression(
-        train.vectors,
-        y_train,
-        c_value,
-        config.classifier.class_weight,
-        config.classifier.max_iter,
-        config.seed,
+        x_fit, y_fit, c_value, config.classifier.class_weight, config.classifier.max_iter, config.seed
     )
     classifier = EmbeddingClassifier(model, classes, config.classifier.version, train.fingerprint)
     validation_accuracy = float(np.mean(model.predict(validation.vectors) == y_validation))
@@ -62,13 +72,9 @@ def main() -> int:
         {
             "created_at": datetime.now(UTC).isoformat(timespec="seconds"),
             "algorithm": "sklearn.linear_model.LogisticRegression",
-            "input": "L2-normalised DINOv2 CLS embeddings",
+            "input": "L2-normalised DINOv2 embeddings (view-averaged at inference)",
             "preprocessing_version": PREPROCESSING_VERSION,
-            "encoder": {
-                "name": config.encoder.name,
-                "hub_id": config.encoder.hub_id,
-                "revision": config.encoder.revision,
-            },
+            "encoder": config.encoder.model_dump(),
             "dataset": "Mikrobat",
             "classes": classes,
             "train_images_per_class": {c: int((y_train == i).sum()) for c, i in index_of.items()},
@@ -78,6 +84,8 @@ def main() -> int:
                 "class_weight": config.classifier.class_weight,
                 "max_iter": config.classifier.max_iter,
                 "random_state": config.seed,
+                "train_on_views": config.classifier.train_on_views,
+                "training_rows": int(x_fit.shape[0]),
             },
             "selection": {"criterion": "minimum validation log-loss", "grid": scores},
             "validation_accuracy": validation_accuracy,
@@ -85,11 +93,7 @@ def main() -> int:
             "pipeline_config_version": config.version,
         },
     )
-    print(
-        json.dumps(
-            {"selected_C": c_value, "validation_accuracy": validation_accuracy, "grid": scores}, indent=2
-        )
-    )
+    print(json.dumps({"selected_C": c_value, "validation_accuracy": validation_accuracy}, indent=2))
     return 0
 
 

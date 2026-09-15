@@ -32,16 +32,6 @@ KNOWN_SETS = (ds.TEST, ds.HELDOUT_KNOWN)
 DECISIONS = (PRELIMINARY_PASS, REVIEW_REQUIRED, UNKNOWN_DECISION)
 
 
-def default_pipeline() -> ScreeningPipeline:
-    return ScreeningPipeline.load(
-        ArtifactPaths.from_layout(
-            paths.MODELS_DIR,
-            paths.INDEXES_DIR / "references.faiss",
-            paths.INDEXES_DIR / "reference_metadata.json",
-        )
-    )
-
-
 def score_split(pipeline: ScreeningPipeline, name: str) -> pd.DataFrame:
     embeddings = ds.load_embeddings(name)
     if embeddings.fingerprint != pipeline.encoder.fingerprint:
@@ -487,7 +477,8 @@ def render_report(report: dict) -> str:
 
 
 def main() -> int:
-    pipeline = default_pipeline()
+    artifacts = ArtifactPaths.from_manifest(paths.MODELS_DIR)
+    pipeline = ScreeningPipeline.load(artifacts)
     scored = {
         name: score_split(pipeline, name)
         for name in (ds.TEST, ds.HELDOUT_KNOWN, ds.OOD_EVALUATION, ds.AMBIGUITY_PROBE)
@@ -513,15 +504,9 @@ def main() -> int:
             ]
             for name, f in scored.items()
         },
-        "unknown_calibration": json.loads(
-            (paths.CLASSIFIERS_DIR / "calibration.json").read_text(encoding="utf-8")
-        ),
-        "decision_policy": json.loads(
-            (paths.MODEL_CONFIGS_DIR / f"{pipeline.policy.version}.json").read_text(encoding="utf-8")
-        ),
-        "quality_bounds": json.loads(
-            (paths.MODEL_CONFIGS_DIR / f"{pipeline.quality_bounds.version}.json").read_text(encoding="utf-8")
-        ),
+        "unknown_calibration": json.loads(artifacts.unknown_calibration_path.read_text(encoding="utf-8")),
+        "decision_policy": json.loads(artifacts.decision_policy_path.read_text(encoding="utf-8")),
+        "quality_bounds": json.loads(artifacts.quality_bounds_path.read_text(encoding="utf-8")),
     }
     report["model"]["classes"] = list(report["model"]["classes"])
     paths.MODEL_REPORTS_DIR.mkdir(parents=True, exist_ok=True)

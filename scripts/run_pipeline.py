@@ -2,7 +2,7 @@
 
   download_assets -> prepare_dataset -> extract_embeddings -> calibrate_quality ->
   train_classifier -> build_index -> calibrate_unknown -> calibrate_decision ->
-  evaluate -> prepare_demo_cases
+  publish_release -> evaluate -> prepare_demo_cases
 
 Usage:
   python -m scripts.run_pipeline                    # everything
@@ -25,6 +25,7 @@ STEPS = {
     "build_index": "ml.training.build_index",
     "calibrate_unknown": "ml.training.calibrate_unknown",
     "calibrate_decision": "ml.training.calibrate_decision",
+    "publish_release": "ml.training.publish_release",
     "evaluate": "ml.evaluation.evaluate",
     "prepare_demo_cases": "scripts.prepare_demo_cases",
 }

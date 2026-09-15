@@ -17,6 +17,7 @@ from ml.classifiers.classifier import EmbeddingClassifier, fit_logistic_regressi
 from ml.decision.decision_engine import DecisionPolicy
 from ml.inference.screening_pipeline import ScreeningPipeline
 from ml.preprocessing.quality import QualityBounds
+from ml.preprocessing.transforms import to_model_input
 from ml.retrieval.faiss_store import ReferenceIndex, ReferenceRecord
 from ml.uncertainty.unknown_detector import (
     UnknownCalibration,
@@ -30,13 +31,14 @@ CLASSES = ["alpha", "beta"]
 
 
 class FakeEncoder:
-    """Maps a normalised model input to the L2-normalised, mean-centred 8x8 thumbnail."""
+    """Maps the normalised model input to its L2-normalised, mean-centred 8x8 thumbnail."""
 
     name = "Test encoder"
     fingerprint = FINGERPRINT
     dimension = 64
 
-    def encode(self, batch: np.ndarray) -> np.ndarray:
+    def encode_images(self, images: list[Image.Image]) -> np.ndarray:
+        batch = np.stack([to_model_input(image, 224) for image in images])
         channel = batch[:, 0]
         n, h, w = channel.shape
         pooled = channel.reshape(n, 8, h // 8, 8, w // 8).mean(axis=(2, 4)).reshape(n, 64)
@@ -74,18 +76,12 @@ class SyntheticSetup:
     data_dir: Path
 
 
-def _embed(encoder: FakeEncoder, images: list[Image.Image]) -> np.ndarray:
-    from ml.preprocessing.transforms import to_model_input
-
-    return encoder.encode(np.stack([to_model_input(image) for image in images]))
-
-
 def build_synthetic_pipeline(data_dir: Path) -> SyntheticSetup:
     encoder = FakeEncoder()
     train_images = {c: [texture(c, seed) for seed in range(12)] for c in CLASSES}
     validation_images = {c: [texture(c, seed) for seed in range(100, 106)] for c in CLASSES}
 
-    train_x = np.concatenate([_embed(encoder, train_images[c]) for c in CLASSES])
+    train_x = np.concatenate([encoder.encode_images(train_images[c]) for c in CLASSES])
     train_y = np.repeat(np.arange(len(CLASSES)), 12)
     model = fit_logistic_regression(train_x, train_y, c=10.0, class_weight="balanced", max_iter=1000, seed=0)
     classifier = EmbeddingClassifier(model, CLASSES, "classifier-test", FINGERPRINT)
@@ -112,8 +108,8 @@ def build_synthetic_pipeline(data_dir: Path) -> SyntheticSetup:
     index = ReferenceIndex.build(np.stack(vectors), records, "index-test", FINGERPRINT)
 
     k = 3
-    validation_x = np.concatenate([_embed(encoder, validation_images[c]) for c in CLASSES])
-    ood_x = _embed(encoder, [texture("ood", seed) for seed in range(10)])
+    validation_x = np.concatenate([encoder.encode_images(validation_images[c]) for c in CLASSES])
+    ood_x = encoder.encode_images([texture("ood", seed) for seed in range(10)])
 
     def distances(x: np.ndarray) -> np.ndarray:
         return np.array(

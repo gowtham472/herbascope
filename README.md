@@ -102,9 +102,9 @@ ml/                       shared ML library
   preprocessing/ encoders/ classifiers/ retrieval/ uncertainty/ evidence/ decision/
   inference/screening_pipeline.py   the one pipeline used by API, evaluation and smoke test
   training/               prepare_dataset, extract_embeddings, calibrate_quality, train_classifier,
-                          build_index, calibrate_unknown, calibrate_decision
+                          build_index, calibrate_unknown, calibrate_decision, publish_release
   evaluation/evaluate.py  metrics, ablation, reports
-  configs/pipeline-v1.json  pinned sources, split policy, calibration objectives
+  configs/pipeline.json   pinned sources, split policy, embedding recipe, calibration objectives
 scripts/                  download_assets, run_pipeline, smoke_test, prepare_demo_cases
 tests/                    ML unit + integration tests
 docs/                     specifications, ADRs, generated reports (docs/reports/)
@@ -147,12 +147,13 @@ step can also be run on its own:
 |---|---|---|
 | Download + pin assets | `python -m scripts.download_assets` | `data/raw/`, `models/pretrained/` with `SOURCE.json` receipts |
 | Dataset lock | `python -m ml.training.prepare_dataset` | splits, manifest, `docs/reports/dataset_report.md` |
-| Embeddings | `python -m ml.training.extract_embeddings` | `data/embeddings/*.npz` (cached by fingerprint) |
-| Quality bounds | `python -m ml.training.calibrate_quality` | `models/configs/quality-v1.json` |
+| Embeddings | `python -m ml.training.extract_embeddings` | `data/embeddings/*.npz` (cached by fingerprint), `models/configs/<encoder version>.json` |
+| Quality bounds | `python -m ml.training.calibrate_quality` | `models/configs/<quality version>.json` |
 | Classifier | `python -m ml.training.train_classifier` | `models/classifiers/classifier.joblib`, `label_encoder.json`, `training_config.json` |
 | Reference index | `python -m ml.training.build_index` | `models/indexes/references.faiss`, `reference_metadata.json`, `data/references/` |
 | Unknown calibration | `python -m ml.training.calibrate_unknown` | `models/classifiers/calibration.json` |
-| Decision calibration | `python -m ml.training.calibrate_decision` | `models/configs/decision-v1.json` |
+| Decision calibration | `python -m ml.training.calibrate_decision` | `models/configs/<decision version>.json` |
+| Publish release | `python -m ml.training.publish_release` | `models/manifest.json` (loads and cross-checks the full pipeline, records SHA-256 of every artifact) |
 | Evaluation | `python -m ml.evaluation.evaluate` | `models/reports/`, `docs/reports/evaluation_report.md` |
 | Demo cases | `python -m scripts.prepare_demo_cases` | `data/demo/*.png`, `docs/reports/demo_cases.md` |
 | Smoke test | `python -m scripts.smoke_test [image]` | one full inference printed as JSON |
@@ -182,7 +183,7 @@ what is missing and the UI blocks uploads.
 ## Tests and linting
 
 ```powershell
-.\.venv\Scripts\python -m pytest            # 82 tests: ML units, synthetic end-to-end API, real-artifact integration
+.\.venv\Scripts\python -m pytest            # ML units, synthetic end-to-end API, real-artifact integration
 .\.venv\Scripts\python -m ruff check .
 .\.venv\Scripts\python -m ruff format --check .
 pnpm --dir apps/web test                    # Vitest + Testing Library
@@ -234,10 +235,8 @@ API (`.env` in the repository root, see [`.env.example`](.env.example)):
 
 | Variable | Default | Meaning |
 |---|---|---|
-| `MODEL_DIR` | `./models` | Model artifact root |
+| `MODEL_DIR` | `./models` | Model release root; artifacts are located through `manifest.json` and hash-verified |
 | `DATA_DIR` | `./data` | Data root; reference images are resolved inside it |
-| `REFERENCE_INDEX` | `./models/indexes/references.faiss` | FAISS index |
-| `REFERENCE_METADATA` | `./models/indexes/reference_metadata.json` | Reference records |
 | `APP_STATE_DIR` | `./data/app` | SQLite history + stored samples |
 | `CORS_ORIGINS` | `http://localhost:3000` | Comma-separated allowed origins |
 | `MAX_UPLOAD_MB` | `10` | Upload limit (also shown by the UI) |
@@ -247,7 +246,7 @@ Web (`apps/web/.env.local`, see [`apps/web/.env.example`](apps/web/.env.example)
 `NEXT_PUBLIC_API_BASE_URL=http://localhost:8000/api/v1`.
 
 Pipeline choices (sources, seed, split ratios, calibration objectives):
-[`ml/configs/pipeline-v1.json`](ml/configs/pipeline-v1.json). **Calibrated values are never edited
+[`ml/configs/pipeline.json`](ml/configs/pipeline.json). **Calibrated values are never edited
 by hand.** They are written by the calibration steps into `models/`.
 
 ## Demo cases and offline rehearsal

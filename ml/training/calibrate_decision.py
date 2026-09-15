@@ -8,7 +8,7 @@
   max_unknown_risk           the calibrated unknown risk at the known boundary, so a PASS
                              requires the sample to sit inside the known-material distance range.
 
-Output: models/configs/decision-v1.json
+Output: models/configs/<decision version>.json
 Usage:  python -m ml.training.calibrate_decision
 """
 
@@ -99,10 +99,9 @@ def main() -> int:
         ],
         "pipeline_config_version": config.version,
     }
-    paths.MODEL_CONFIGS_DIR.mkdir(parents=True, exist_ok=True)
-    (paths.MODEL_CONFIGS_DIR / f"{config.decision.version}.json").write_text(
-        json.dumps(payload, indent=2), encoding="utf-8"
-    )
+    target = paths.model_config_path(config.decision.version)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text(json.dumps(payload, indent=2), encoding="utf-8")
     print(
         json.dumps(
             {

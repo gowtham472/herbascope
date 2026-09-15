@@ -1,11 +1,17 @@
 import copy
+import json
 from dataclasses import replace
 
 import pytest
 
 from ml import paths
 from ml.decision.decision_engine import PRELIMINARY_PASS, UNKNOWN_DECISION
-from ml.inference.screening_pipeline import ArtifactMismatchError, ArtifactPaths, ScreeningPipeline
+from ml.inference.screening_pipeline import (
+    ArtifactMismatchError,
+    ArtifactPaths,
+    ScreeningPipeline,
+    file_sha256,
+)
 from ml.preprocessing.image_io import decode_image, load_image_file
 from ml.training import datasets as ds
 from tests.helpers import build_synthetic_pipeline, png_bytes, texture
@@ -56,17 +62,55 @@ def test_calibration_for_another_index_is_rejected(setup):
         ScreeningPipeline(p.encoder, p.classifier, p.index, stale, p.quality_bounds, p.policy)
 
 
-def test_load_reports_missing_artifacts(tmp_path):
-    artifacts = ArtifactPaths.from_layout(tmp_path, tmp_path / "references.faiss", tmp_path / "meta.json")
-    with pytest.raises(FileNotFoundError, match="Missing model artifacts"):
-        ScreeningPipeline.load(artifacts)
+def test_missing_manifest_is_reported(tmp_path):
+    with pytest.raises(FileNotFoundError, match="manifest not found"):
+        ArtifactPaths.from_manifest(tmp_path)
 
 
-REAL_ARTIFACTS = ArtifactPaths.from_layout(
-    paths.MODELS_DIR, paths.INDEXES_DIR / "references.faiss", paths.INDEXES_DIR / "reference_metadata.json"
-)
+def _write_release(model_dir, roles):
+    artifacts = {}
+    for role in roles:
+        path = model_dir / "files" / f"{role}.bin"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(role.encode())
+        artifacts[role] = {"path": f"files/{role}.bin", "sha256": file_sha256(path)}
+    (model_dir / "manifest.json").write_text(json.dumps({"release": "test", "artifacts": artifacts}))
+
+
+RELEASE_ROLES = [
+    "encoder_settings",
+    "classifier_model",
+    "reference_index",
+    "reference_metadata",
+    "unknown_calibration",
+    "quality_bounds",
+    "decision_policy",
+]
+
+
+def test_manifest_locates_verified_artifacts(tmp_path):
+    _write_release(tmp_path, RELEASE_ROLES)
+    artifacts = ArtifactPaths.from_manifest(tmp_path)
+    assert artifacts.index_path == tmp_path / "files" / "reference_index.bin"
+    assert artifacts.classifier_dir == tmp_path / "files"
+
+
+def test_manifest_rejects_modified_artifacts(tmp_path):
+    _write_release(tmp_path, RELEASE_ROLES)
+    (tmp_path / "files" / "decision_policy.bin").write_bytes(b"edited by hand")
+    with pytest.raises(ArtifactMismatchError, match="decision_policy"):
+        ArtifactPaths.from_manifest(tmp_path)
+
+
+def test_manifest_reports_missing_files(tmp_path):
+    _write_release(tmp_path, RELEASE_ROLES)
+    (tmp_path / "files" / "reference_index.bin").unlink()
+    with pytest.raises(FileNotFoundError, match="reference_index"):
+        ArtifactPaths.from_manifest(tmp_path)
+
+
 needs_artifacts = pytest.mark.skipif(
-    bool(REAL_ARTIFACTS.missing()) or not ds.split_path(ds.TEST).is_file(),
+    not paths.MANIFEST_PATH.is_file() or not ds.split_path(ds.TEST).is_file(),
     reason="real model artifacts not built; run `python -m scripts.run_pipeline`",
 )
 
@@ -74,7 +118,7 @@ needs_artifacts = pytest.mark.skipif(
 @pytest.mark.artifacts
 @needs_artifacts
 def test_real_pipeline_screens_real_images():
-    pipeline = ScreeningPipeline.load(REAL_ARTIFACTS)
+    pipeline = ScreeningPipeline.load(ArtifactPaths.from_manifest(paths.MODELS_DIR))
     known = ds.load_split(ds.TEST)
     ood = ds.load_split(ds.OOD_EVALUATION)
     known_result = pipeline.analyze_image(load_image_file(known.image_paths()[0]))

@@ -4,8 +4,11 @@ Quality never changes species identity. It feeds evidence strength and can only 
 decision from PRELIMINARY_PASS to REVIEW_REQUIRED.
 
 Every bound except ``min_side`` is calibrated from the Mikrobat training images by
-ml/training/calibrate_quality.py. ``min_side`` equals the DINOv2 input size: a smaller
-image has to be upsampled, so the encoder sees interpolated rather than recorded detail.
+ml/training/calibrate_quality.py. ``min_side`` is the DINOv2 pretraining resolution (224 px):
+below it the image carries less recorded detail than the encoder was trained to read.
+
+Measurements use a fixed analysis scale that is independent of the encoder input size, so
+changing the encoder resolution never silently changes the quality calibration.
 """
 
 from __future__ import annotations
@@ -18,10 +21,11 @@ import cv2
 import numpy as np
 from PIL import Image
 
-from ml.preprocessing.transforms import MODEL_INPUT_SIZE, to_grayscale
+from ml.preprocessing.transforms import to_grayscale
 
 ACCEPTABLE = "ACCEPTABLE"
 DEGRADED = "DEGRADED"
+ANALYSIS_SHORT_SIDE = 224
 
 
 @dataclass(frozen=True)
@@ -82,13 +86,13 @@ class QualityAssessment:
 
 
 def analysis_canvas(image: Image.Image) -> np.ndarray:
-    """Grayscale uint8 array whose short side equals the encoder input size.
+    """Grayscale uint8 array whose short side equals ANALYSIS_SHORT_SIDE.
 
     Measuring at a fixed scale keeps sharpness comparable between the 300 px reference
     micrographs and arbitrarily sized uploads.
     """
     gray = to_grayscale(image)
-    scale = MODEL_INPUT_SIZE / min(gray.size)
+    scale = ANALYSIS_SHORT_SIDE / min(gray.size)
     size = (max(1, round(gray.width * scale)), max(1, round(gray.height * scale)))
     return np.asarray(gray.resize(size, Image.Resampling.BICUBIC), dtype=np.uint8)
 

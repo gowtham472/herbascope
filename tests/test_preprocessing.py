@@ -5,7 +5,13 @@ import pytest
 from PIL import Image
 
 from ml.preprocessing.image_io import InvalidImageError, decode_image
-from ml.preprocessing.transforms import MODEL_INPUT_SIZE, pad_to_square, to_grayscale, to_model_input
+from ml.preprocessing.transforms import (
+    DIHEDRAL_TRANSFORMS,
+    dihedral_view,
+    pad_to_square,
+    to_grayscale,
+    to_model_input,
+)
 from tests.helpers import png_bytes, texture
 
 
@@ -68,14 +74,28 @@ def test_pad_to_square_preserves_content_without_cropping():
     assert (pixels == 90).all()  # padding uses the mean intensity
 
 
-def test_to_model_input_shape_and_normalisation():
-    array = to_model_input(texture("beta", 1, size=300))
-    assert array.shape == (3, MODEL_INPUT_SIZE, MODEL_INPUT_SIZE)
+@pytest.mark.parametrize("size", [224, 308, 448])
+def test_to_model_input_shape_and_normalisation(size):
+    array = to_model_input(texture("beta", 1, size=300), size)
+    assert array.shape == (3, size, size)
     assert array.dtype == np.float32
     assert np.allclose(array[0] * 0.229 + 0.485, array[1] * 0.224 + 0.456, atol=1e-5)
+
+
+def test_to_model_input_rejects_sizes_that_are_not_patch_multiples():
+    with pytest.raises(ValueError, match="multiple"):
+        to_model_input(texture("beta", 1), 300)
 
 
 def test_to_model_input_is_deterministic_and_colour_invariant():
     gray = texture("alpha", 3)
     rgb = gray.convert("RGB")
-    assert np.array_equal(to_model_input(gray), to_model_input(rgb))
+    assert np.array_equal(to_model_input(gray, 224), to_model_input(rgb, 224))
+
+
+def test_dihedral_views_are_the_eight_distinct_symmetries_of_the_square():
+    asymmetric = Image.fromarray(np.arange(16, dtype=np.uint8).reshape(4, 4) * 16, mode="L")
+    views = [np.asarray(dihedral_view(asymmetric, v)).tobytes() for v in range(len(DIHEDRAL_TRANSFORMS))]
+    assert len(DIHEDRAL_TRANSFORMS) == 8
+    assert len(set(views)) == 8
+    assert views[0] == np.asarray(asymmetric).tobytes()

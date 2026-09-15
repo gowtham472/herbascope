@@ -58,7 +58,8 @@ def embeddings_path(name: str) -> Path:
 @dataclass(frozen=True)
 class SplitEmbeddings:
     split: SplitFrame
-    vectors: np.ndarray
+    vectors: np.ndarray  # (N, D) final embeddings (mean over dihedral views)
+    view_vectors: np.ndarray  # (views, N, D) per-view embeddings, used for training augmentation
     fingerprint: str
 
 
@@ -73,7 +74,8 @@ def load_embeddings(name: str) -> SplitEmbeddings:
     with np.load(location, allow_pickle=False) as payload:
         ids = payload["image_ids"].tolist()
         vectors = payload["embeddings"]
+        view_vectors = payload["view_embeddings"]
         fingerprint = str(payload["fingerprint"])
     if ids != split.frame["image_id"].tolist():
         raise ValueError(f"{location} is stale: its image ids do not match {split_path(name)}")
-    return SplitEmbeddings(split, vectors, fingerprint)
+    return SplitEmbeddings(split, vectors, view_vectors, fingerprint)

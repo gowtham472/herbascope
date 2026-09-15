@@ -1,14 +1,15 @@
-"""Typed loader for ml/configs/pipeline-v1.json — the single source of every pipeline choice.
+"""Typed loader for ml/configs/pipeline.json — the single source of every pipeline choice.
 
 Nothing in this file is a calibrated threshold. The config holds pinned sources, split
-policy and the *objectives* that calibration scripts optimise; calibrated values are
-written to models/ by those scripts.
+policy, the embedding recipe and the *objectives* that calibration scripts optimise;
+calibrated values are written to models/ by those scripts.
 """
 
 from __future__ import annotations
 
 from functools import lru_cache
 from pathlib import Path
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
@@ -51,12 +52,22 @@ class Sources(_Strict):
     dimpsar: DimpsarSource
 
 
-class EncoderConfig(_Strict):
+class Backbone(_Strict):
+    """A pinned pretrained DINOv2 checkpoint."""
+
     name: str
     hub_id: str
     revision: str
     local_dir: str
     license: str
+
+
+class EncoderConfig(_Strict):
+    version: str
+    backbone: Backbone
+    input_size: int = Field(gt=0, multiple_of=14)
+    pooling: Literal["cls", "cls_patchmean"]
+    views: int = Field(ge=1, le=8)
     batch_size: int = Field(gt=0)
 
 
@@ -85,6 +96,7 @@ class DimpsarOodConfig(_Strict):
 
 class ClassifierConfig(_Strict):
     version: str
+    train_on_views: bool  # train on every dihedral view of each image (augmentation)
     c_grid: list[float] = Field(min_length=1)
     class_weight: str
     max_iter: int = Field(gt=0)

@@ -20,11 +20,17 @@
     }
   },
   "encoder": {
-    "name": "DINOv2 ViT-S/14",
-    "hub_id": "facebook/dinov2-small",
-    "revision": "ed25f3a31f01632728cabb09d1542f84ab7b0056",
-    "local_dir": "dinov2_vits14",
-    "license": "Apache-2.0",
+    "version": "encoder-v1",
+    "backbone": {
+      "name": "DINOv2 ViT-S/14",
+      "hub_id": "facebook/dinov2-small",
+      "revision": "ed25f3a31f01632728cabb09d1542f84ab7b0056",
+      "local_dir": "dinov2_vits14",
+      "license": "Apache-2.0"
+    },
+    "input_size": 224,
+    "pooling": "cls",
+    "views": 1,
     "batch_size": 32
   },
   "mikrobat_curation": {
@@ -47,6 +53,7 @@
   },
   "classifier": {
     "version": "classifier-v1",
+    "train_on_views": false,
     "c_grid": [0.01, 0.1, 1.0, 10.0, 100.0, 1000.0, 10000.0],
     "class_weight": "balanced",
     "max_iter": 5000

@@ -1,4 +1,4 @@
-"""Deterministic decision engine (policy file: models/configs/decision-v1.json).
+"""Deterministic decision engine (policy file: models/configs/<decision version>.json).
 
 Rules, evaluated in order:
   1. Unknown status UNKNOWN                     -> UNKNOWN (insufficient reference evidence)

@@ -19,7 +19,7 @@ from app.core.logging import configure_logging, get_logger
 from app.services.analysis_store import AnalysisStore
 from app.services.inference_service import InferenceService
 from app.services.reference_service import ReferenceService
-from ml.inference.screening_pipeline import ArtifactMismatchError, ScreeningPipeline
+from ml.inference.screening_pipeline import ArtifactMismatchError, ArtifactPaths, ScreeningPipeline
 
 API_PREFIX = "/api/v1"
 
@@ -40,7 +40,7 @@ def create_app(settings: Settings | None = None, pipeline: ScreeningPipeline | N
         loaded = pipeline
         if loaded is None:
             try:
-                loaded = ScreeningPipeline.load(settings.artifacts)
+                loaded = ScreeningPipeline.load(ArtifactPaths.from_manifest(settings.model_dir))
             except (FileNotFoundError, ArtifactMismatchError) as exc:
                 app.state.load_error = str(exc)
                 logger.warning("starting in degraded mode: %s", exc)

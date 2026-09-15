@@ -1,6 +1,6 @@
 """Download and pin every external asset the pipeline needs, so later steps run offline.
 
-Assets (all pinned in ml/configs/pipeline-v1.json):
+Assets (all pinned in ml/configs/pipeline.json):
   * Mikrobat microscopy dataset  -> data/raw/mikrobat/   (GitHub archive at a fixed commit)
   * DIMPSAR far-OOD source       -> data/raw/dimpsar/    (Hugging Face parquet at a fixed revision)
   * DINOv2 ViT-S/14 weights      -> models/pretrained/dinov2_vits14/
@@ -25,7 +25,7 @@ from pathlib import Path
 
 from ml import paths
 from ml.encoders.dinov2_encoder import download_pretrained
-from ml.pipeline_config import load_pipeline_config
+from ml.pipeline_config import Backbone, load_pipeline_config
 
 CHUNK_BYTES = 1 << 20
 
@@ -116,21 +116,20 @@ def download_dimpsar() -> None:
     print(f"[dimpsar] saved to {target}")
 
 
-def download_encoder() -> None:
-    encoder = load_pipeline_config().encoder
-    target = paths.PRETRAINED_DIR / encoder.local_dir
-    if _receipt_matches(target, "revision", encoder.revision):
-        print(f"[encoder] {encoder.name} already cached")
+def download_backbone(backbone: Backbone) -> None:
+    target = paths.PRETRAINED_DIR / backbone.local_dir
+    if _receipt_matches(target, "revision", backbone.revision):
+        print(f"[encoder] {backbone.name} already cached")
         return
-    print(f"[encoder] caching {encoder.hub_id}@{encoder.revision[:7]}")
-    download_pretrained(encoder.hub_id, encoder.revision, target)
+    print(f"[encoder] caching {backbone.hub_id}@{backbone.revision[:7]}")
+    download_pretrained(backbone.hub_id, backbone.revision, target)
     _write_receipt(
         target,
         {
-            "model": encoder.name,
-            "hub_id": encoder.hub_id,
-            "revision": encoder.revision,
-            "license": encoder.license,
+            "model": backbone.name,
+            "hub_id": backbone.hub_id,
+            "revision": backbone.revision,
+            "license": backbone.license,
             "downloaded_at": _utc_now(),
         },
     )
@@ -140,7 +139,7 @@ def download_encoder() -> None:
 def main() -> int:
     download_mikrobat()
     download_dimpsar()
-    download_encoder()
+    download_backbone(load_pipeline_config().encoder.backbone)
     return 0
 
 

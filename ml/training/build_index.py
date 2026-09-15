@@ -44,7 +44,7 @@ def main() -> int:
     config = load_pipeline_config()
     train = ds.load_embeddings(ds.TRAIN)
     frame = train.split.frame.reset_index(drop=True)
-    bounds = QualityBounds.load(paths.MODEL_CONFIGS_DIR / f"{config.quality.version}.json")
+    bounds = QualityBounds.load(paths.model_config_path(config.quality.version))
     acceptable = np.array(
         [
             assess_quality(measure_quality(load_image_file(path).image, bounds.tile_grid), bounds).status
