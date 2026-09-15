@@ -22,7 +22,7 @@ export function EvidenceBreakdown({ strength, components }: EvidenceBreakdownPro
         <span className="font-mono text-lg font-semibold tabular-nums">{percent(strength)}</span>
       </div>
       <p className="text-xs text-muted">
-        Geometric mean of the components below — a descriptive index, not a probability, and not used by the
+        Geometric mean of the components below - a descriptive index, not a probability, and not used by the
         decision policy.
       </p>
       <ul className="mt-3 space-y-2">

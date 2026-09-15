@@ -8,7 +8,7 @@ import { SiteHeader } from "@/components/common/SiteHeader";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: { default: "HerbaScope X — Microscopic Screening", template: "%s · HerbaScope X" },
+  title: { default: "HerbaScope X - Microscopic Screening", template: "%s · HerbaScope X" },
   description:
     "Evidence-driven preliminary visual screening of microscopic medicinal-plant material: classification, reference retrieval, unknown detection and a deterministic decision.",
 };

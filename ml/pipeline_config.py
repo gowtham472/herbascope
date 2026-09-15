@@ -1,4 +1,4 @@
-"""Typed loader for ml/configs/pipeline.json — the single source of every pipeline choice.
+"""Typed loader for ml/configs/pipeline.json - the single source of every pipeline choice.
 
 Nothing in this file is a calibrated threshold. The config holds pinned sources, split
 policy, the embedding recipe and the *objectives* that calibration scripts optimise;

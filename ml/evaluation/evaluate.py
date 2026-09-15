@@ -283,7 +283,7 @@ def render_report(report: dict) -> str:
     for name, metrics in clf.items():
         labels = metrics["confusion_matrix"]["labels"]
         lines += [
-            f"Confusion matrix — `{name}` (rows = true, columns = predicted)",
+            f"Confusion matrix - `{name}` (rows = true, columns = predicted)",
             "",
             _table(
                 ["true \\ pred", *labels],

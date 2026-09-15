@@ -25,7 +25,7 @@ export function EvidenceAgreementCard({ prediction, retrieval, evidence }: Evide
     <Panel
       title="Evidence Agreement"
       icon={ScalesIcon}
-      description="Complementary analyses of the same visual representation — not independent tests."
+      description="Complementary analyses of the same visual representation - not independent tests."
       aside={<StatusBadge tone={AGREEMENT_TONE[evidence.agreement]} label={evidence.agreement} />}
     >
       <div className="flex items-center justify-between gap-2 rounded-lg bg-canvas px-3 py-2 text-sm">

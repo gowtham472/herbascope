@@ -3,7 +3,7 @@
 Reference selection (per class): drop training images whose quality is DEGRADED, run
 k-means with k = min(per_class budget, candidates) on their embeddings, and keep the real
 image closest to each centroid. This yields representative, visually diverse, good-quality
-references — a curated atlas a reviewer can inspect — rather than the entire training set.
+references - a curated atlas a reviewer can inspect - rather than the entire training set.
 
 The script refuses to index any image whose id or SHA-256 appears in a validation, test,
 held-out, probe or OOD split.

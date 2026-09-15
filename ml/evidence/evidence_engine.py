@@ -1,7 +1,7 @@
 """Evidence engine.
 
 The classifier and the reference retrieval are complementary analyses of the same DINOv2
-representation — not statistically independent evidence. This module compares them and
+representation - not statistically independent evidence. This module compares them and
 summarises how well the available visual evidence supports the model prediction.
 
 Agreement (structural definitions, no tuned numbers):
