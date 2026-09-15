@@ -20,7 +20,9 @@ interface StatusBadgeProps {
 
 export function StatusBadge({ tone, label, size = "sm" }: StatusBadgeProps) {
   const Icon = TONE_ICON[tone];
-  const sizing = size === "lg" ? "gap-2 px-3.5 py-1.5 text-base" : "gap-1.5 px-2.5 py-0.5 text-xs";
+  // The large badge is the headline decision, so it gets the entrance; small badges appear
+  // inside lists and tables where a pop on every row would be noise.
+  const sizing = size === "lg" ? "badge-pop gap-2 px-3.5 py-1.5 text-base" : "gap-1.5 px-2.5 py-0.5 text-xs";
   return (
     <span className={`inline-flex items-center rounded-full font-semibold ring-1 ring-inset ${sizing} ${TONE_CLASSES[tone].badge}`}>
       <Icon weight="bold" aria-hidden="true" className={size === "lg" ? "size-5" : "size-3.5"} />

@@ -55,11 +55,15 @@ export function ImageUploader({ maxBytes, disabled = false, onSelect }: ImageUpl
         }}
         onDragLeave={() => setDragging(false)}
         onDrop={handleDrop}
-        className={`flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed px-6 py-10 text-center transition-colors has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-brand-600 ${
-          dragging ? "border-brand-500 bg-brand-50" : "border-line bg-surface hover:border-brand-500/60 hover:bg-canvas"
+        className={`press flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed px-6 py-10 text-center has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-brand-600 ${
+          dragging
+            ? "scale-[1.01] border-brand-500 bg-brand-50 shadow-sm"
+            : "border-line bg-surface hover:border-brand-500/60 hover:bg-canvas"
         } ${disabled ? "pointer-events-none opacity-60" : ""}`}
       >
-        <span className="grid size-12 place-items-center rounded-full bg-brand-50 text-brand-700">
+        <span
+          className={`grid size-12 place-items-center rounded-full bg-brand-50 text-brand-700 transition-transform duration-200 ${dragging ? "-translate-y-1 scale-110" : ""}`}
+        >
           <UploadSimpleIcon aria-hidden="true" weight="bold" className="size-6" />
         </span>
         <span className="mt-3 font-semibold text-ink">Upload microscopic sample</span>

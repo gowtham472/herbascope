@@ -1,5 +1,7 @@
 import Image from "next/image";
 
+import { AnimatedMeter } from "@/components/motion/AnimatedMeter";
+import { Reveal } from "@/components/motion/Reveal";
 import { apiUrl } from "@/lib/api";
 import { classLabel, decimal, sentenceCase } from "@/lib/format";
 import type { ReferenceMatch } from "@/types";
@@ -8,14 +10,15 @@ interface ReferenceMatchCardProps {
   match: ReferenceMatch;
   predictedClass: string;
   minSimilarity: number;
+  /** Rank position, used to stagger the reveal so the atlas fills in nearest-first. */
+  index?: number;
 }
 
-export function ReferenceMatchCard({ match, predictedClass, minSimilarity }: ReferenceMatchCardProps) {
+export function ReferenceMatchCard({ match, predictedClass, minSimilarity, index = 0 }: ReferenceMatchCardProps) {
   const sameClass = match.class_name === predictedClass;
-  const similarityWidth = `${Math.min(Math.max(match.similarity, 0), 1) * 100}%`;
   return (
-    <li className="overflow-hidden rounded-lg border border-line bg-surface break-inside-avoid">
-      <div className="relative aspect-square bg-canvas">
+    <Reveal as="li" index={index} className="lift zoom-hover overflow-hidden rounded-lg border border-line bg-surface break-inside-avoid">
+      <div className="relative aspect-square overflow-hidden bg-canvas">
         {/* Served by the local API; see ImagePreview for why optimisation is bypassed. */}
         <Image
           src={apiUrl(match.image_url)}
@@ -41,9 +44,9 @@ export function ReferenceMatchCard({ match, predictedClass, minSimilarity }: Ref
         </p>
         <div className="flex items-center gap-2">
           <div className="h-1.5 flex-1 rounded-full bg-canvas ring-1 ring-inset ring-line" aria-hidden="true">
-            <div
+            <AnimatedMeter
+              value={match.similarity}
               className={`h-full rounded-full ${match.similarity >= minSimilarity ? "bg-pass-600" : "bg-review-600"}`}
-              style={{ width: similarityWidth }}
             />
           </div>
           <span className="font-mono text-xs tabular-nums" aria-label={`Cosine similarity ${decimal(match.similarity)}`}>
@@ -54,6 +57,6 @@ export function ReferenceMatchCard({ match, predictedClass, minSimilarity }: Ref
           {match.reference_id} · {match.dataset}
         </p>
       </div>
-    </li>
+    </Reveal>
   );
 }

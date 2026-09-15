@@ -33,7 +33,7 @@ export function SiteHeader() {
                 <Link
                   href={href}
                   aria-current={active ? "page" : undefined}
-                  className={`inline-flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm font-medium focus-visible:outline-2 focus-visible:outline-brand-600 ${
+                  className={`press inline-flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm font-medium focus-visible:outline-2 focus-visible:outline-brand-600 ${
                     active ? "bg-brand-50 text-brand-700" : "text-muted hover:bg-canvas hover:text-ink"
                   }`}
                 >

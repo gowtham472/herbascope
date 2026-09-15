@@ -1,4 +1,4 @@
-# HerbaScope X — The Project Explained
+# HerbaScope X - The Project Explained
 
 This document explains the whole project twice: in **plain language** (for judges, teammates and
 anyone new) and in **technical detail** (for engineers). Every number below was measured on this
@@ -135,7 +135,7 @@ model-improvement experiment (§7.1).
 
 ---
 
-## 5. "Did we train an AI model?" — the ML, honestly explained
+## 5. "Did we train an AI model?" - the ML, honestly explained
 
 ### 5.1 We did not train a deep neural network from scratch, and we did not fine-tune one
 
@@ -199,7 +199,7 @@ free, label-preserving augmentation. Validation accuracy: 94.6%.
 
 ### 5.4 Reference retrieval (the "show me similar examples" part)
 **Plain language.** From the training images we picked **20 representative reference images per
-plant** (40 in total) — like a small reference atlas. For a new sample we find the 5 most
+plant** (40 in total) - like a small reference atlas. For a new sample we find the 5 most
 similar references and **show them**, so a person can compare with their own eyes.
 
 **Technical.** For each class, training images whose quality is DEGRADED are dropped. We run
@@ -287,7 +287,7 @@ cannot, and they work offline (ADR-017).
 
 ---
 
-## 6. The data — what we used, what we found, how we kept it honest
+## 6. The data - what we used, what we found, how we kept it honest
 
 ### 6.1 Datasets
 | Dataset | Role | Notes |
@@ -311,7 +311,7 @@ reproducible.
 - Species and fragment type are **confounded**: after cleaning, the two classes share no
   fragment-type label. For example, the xylem images belong to only one class.
 
-### 6.3 Duplicate detection — a data-derived rule instead of a guess
+### 6.3 Duplicate detection - a data-derived rule instead of a guess
 **Plain language.** We needed to know when two images are "basically the same photo", so that a
 photo and its near-copy never end up split between training and testing. Otherwise the model
 gets to "cheat" on the test.
@@ -373,7 +373,7 @@ Measured on data never used for training or calibration
 | **Held-out known material** (104, unseen fragment types) | Accuracy 57.7%; 20 passes, only 2 correct (10.0%) |
 | **Ambiguity probe** (53) | 14 pass, 39 review, 0 unknown |
 
-**Ablation — does each layer earn its place?**
+**Ablation - does each layer earn its place?**
 
 | System | Test: wrong plant accepted | Field photos accepted as microscopy |
 |---|---|---|
@@ -409,7 +409,7 @@ that raised test accuracy but not the cross-validation score, which we therefore
 
 | Release | Recipe | Grouped 5-fold CV accuracy | Test accuracy | Test passes (correct) | Held-out passes (correct) |
 |---|---|---|---|---|---|
-| v1 | 224 px, final-block CLS, 1 view | — | 88.9% (64/72) | 24 (24) | 52 (21) |
+| v1 | 224 px, final-block CLS, 1 view | - | 88.9% (64/72) | 24 (24) | 52 (21) |
 | v2 | 448 px, last-4-block CLS, 4 rotations, trained on every view | 90.6% | 95.8% (69/72) | 16 (15) | 17 (7) |
 | v3 | 518 px, last-4-block CLS, 4 rotations, trained on every view | 91.6% | 95.8% (69/72) | 26 (26) | 34 (7) |
 | v4 | 588 px, last-4-block CLS, 4 rotations, trained on every view | **92.0%** | **97.2% (70/72)** | 19 (18) | 20 (2) |
@@ -498,7 +498,7 @@ stays browsable. The system never shows a fake or placeholder prediction.
 
 ---
 
-## 9. The technology stack — what, and why
+## 9. The technology stack - what, and why
 
 | Layer | Choice | Why this | Why not the alternatives |
 |---|---|---|---|
@@ -506,23 +506,24 @@ stays browsable. The system never shows a fake or placeholder prediction.
 | Vision encoder | **DINOv2 ViT-S/14** (frozen) via **transformers** + **PyTorch** (CPU) | Strong general features for linear probes and nearest-neighbour search; small enough for CPU; pinned and offline | CNN from scratch: needs far more data; fine-tuning: overfits 341 images and destabilises the shared embedding space; ViT-B/14: tested, lower cross-validated accuracy and slower; Cloud Vision: generic labels, online, no reference library |
 | Classifier | **scikit-learn LogisticRegression** | 1,537 parameters, trains in seconds, calibrated probabilities, trivially serialised (joblib) | Random forest/XGBoost: extra tuning for no gain on dense embeddings; an MLP head is another training loop |
 | Vector search | **FAISS IndexFlatIP** | Exact, deterministic cosine search; purpose-built; local | NumPy brute force works but FAISS scales without rewriting; pgvector needs a database server |
-| Image processing | **Pillow + OpenCV (headless)** | Robust decoding and validation (Pillow); fast Laplacian/DCT (OpenCV); the headless build has no GUI dependencies | — |
-| Data prep | **pandas + pyarrow** | DIMPSAR ships as parquet; tabular split files and reports | — |
+| Image processing | **Pillow + OpenCV (headless)** | Robust decoding and validation (Pillow); fast Laplacian/DCT (OpenCV); the headless build has no GUI dependencies | - |
+| Data prep | **pandas + pyarrow** | DIMPSAR ships as parquet; tabular split files and reports | - |
 | Config validation | **Pydantic / pydantic-settings** | Typed, validated pipeline config and environment settings; the same library FastAPI uses | Hand-written parsing is error-prone |
 | API | **FastAPI + Uvicorn** | Python-native, typed request/response models, automatic OpenAPI docs, simple dependency injection | Flask: no typed schema or OpenAPI out of the box; Node/Express: cross-language orchestration |
 | History storage | **SQLite** | Zero setup, no server, no credentials; ideal for a local screening station | PostgreSQL is unnecessary for a single-node MVP |
 | Frontend framework | **Next.js 16 (App Router) + React 19 + TypeScript** | Modern routing, typed code, production build and a standalone server output for Docker | A plain Vite SPA would work but adds nothing here; the spec asked for Next.js |
-| Styling | **Tailwind CSS v4** | Design tokens in CSS (`@theme`), consistent spacing and colour, no CSS-in-JS runtime | — |
+| Styling | **Tailwind CSS v4** | Design tokens in CSS (`@theme`), consistent spacing and colour, no CSS-in-JS runtime | - |
+| Motion | **CSS only** (tokens, utilities and keyframes in `app/globals.css`) | Every animation ends at the element's base state, so a paused or disabled animation still shows the real value; no bundle cost; only `transform` and `opacity` animate | An animation library (`motion`) was installed and removed: it left "0.0%" on screen when the animation frame did not run (ADR-023) |
 | Icons | **Phosphor Icons** (one family, `/ssr` entry) | Consistent technical look; the SSR entry works in both server and client components | Mixing icon libraries or emoji was prohibited by the spec |
 | Fonts | **Geist** (bundled npm package) | Offline builds and demos | `next/font/google` downloads fonts at build time |
-| Python quality | **pytest + ruff** | Fast tests and a single fast linter/formatter | — |
-| Web quality | **Vitest + Testing Library + ESLint** | Next.js-documented setup; tests exercise what the user sees (roles, labels) | — |
-| Packaging | **pnpm**, **pip requirements (pinned)** | Reproducible installs | — |
+| Python quality | **pytest + ruff** | Fast tests and a single fast linter/formatter | - |
+| Web quality | **Vitest + Testing Library + ESLint** | Next.js-documented setup; tests exercise what the user sees (roles, labels) | - |
+| Packaging | **pnpm**, **pip requirements (pinned)** | Reproducible installs | - |
 | Containers | **Docker + Compose** | One command to run both services; CPU-only torch wheel; artifacts mounted | Baking artifacts would redistribute Mikrobat images and bloat images |
 
 ---
 
-## 10. What we did differently — the creative decisions
+## 10. What we did differently - the creative decisions
 
 1. **The product is the evidence-to-decision layer, not the classifier.** A three-way outcome with
    a first-class *"I don't know"* answer, instead of forcing a label.
@@ -552,6 +553,9 @@ stays browsable. The system never shows a fake or placeholder prediction.
 14. **Offline-first down to the fonts.**
 15. **Pre-registered model improvement.** Every accuracy idea is committed with its adoption rule
     before it runs and is judged by grouped cross-validation, never by the small test set (§7.1).
+16. **Motion that cannot lie.** The interface animates, but the finished state is always the base
+    state and numbers never move, so a paused, disabled or printed animation still shows the
+    measured value (ADR-023).
 
 ---
 

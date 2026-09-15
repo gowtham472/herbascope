@@ -3,6 +3,7 @@ import { QuestionIcon } from "@phosphor-icons/react/ssr";
 import { MetricCard } from "@/components/common/MetricCard";
 import { Panel } from "@/components/common/Panel";
 import { StatusBadge } from "@/components/common/StatusBadge";
+import { AnimatedMarker } from "@/components/motion/AnimatedMarker";
 import { LABELS } from "@/lib/copy";
 import { decimal, percent, UNKNOWN_TONE } from "@/lib/format";
 import type { Unknown } from "@/types";
@@ -50,9 +51,9 @@ export function UnknownRiskCard({ unknown, maxUnknownRisk }: UnknownRiskCardProp
           <div className="absolute inset-y-0 right-0 bg-unknown-200" style={{ left: gaugePosition(unknown.threshold, scaleMax) }} />
         </div>
         <div className="relative h-5" aria-hidden="true">
-          <span
+          <AnimatedMarker
             className="absolute -top-4.5 size-4 -translate-x-1/2 rotate-45 rounded-sm border-2 border-surface bg-ink shadow"
-            style={{ left: gaugePosition(unknown.distance, scaleMax) }}
+            left={gaugePosition(unknown.distance, scaleMax)}
           />
         </div>
         <div className="flex justify-between text-[11px] text-muted" aria-hidden="true">

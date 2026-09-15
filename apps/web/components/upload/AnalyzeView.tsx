@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 
 import { AnalysisProgress } from "@/components/analysis/AnalysisProgress";
 import { ErrorState } from "@/components/common/ErrorState";
+import { Fade } from "@/components/motion/Fade";
 import { useApiResource } from "@/hooks/useApiResource";
 import { analyzeImage, ApiError, getHealth } from "@/lib/api";
 import { classLabel, formatBytes } from "@/lib/format";
@@ -67,16 +68,22 @@ export function AnalyzeView() {
     <div className="grid gap-6 lg:grid-cols-[1fr_22rem]">
       <div className="space-y-4">
         {health.status === "loading" ? (
-          <div className="h-44 animate-pulse rounded-xl border border-line bg-surface" aria-label="Loading upload settings" />
+          <div className="h-44 skeleton rounded-xl border border-line" aria-label="Loading upload settings" />
         ) : (
           <ImageUploader maxBytes={maxBytes} disabled={submitting} onSelect={select} />
         )}
-        {submitting && model ? <AnalysisProgress encoder={model.encoder} /> : null}
+        {submitting && model ? (
+          <Fade>
+            <AnalysisProgress encoder={model.encoder} />
+          </Fade>
+        ) : null}
         {error ? (
-          <ErrorState
-            title={error.status === 0 ? "Could not reach the API" : "The image could not be analysed"}
-            message={error.message}
-          />
+          <Fade>
+            <ErrorState
+              title={error.status === 0 ? "Could not reach the API" : "The image could not be analysed"}
+              message={error.message}
+            />
+          </Fade>
         ) : null}
         {model ? (
           <p className="text-sm text-muted">
@@ -89,7 +96,7 @@ export function AnalyzeView() {
 
       <aside aria-label="Selected sample" className="space-y-3">
         {selection ? (
-          <>
+          <Fade key={selection.previewUrl} className="space-y-3">
             <ImagePreview
               src={selection.previewUrl}
               alt={`Selected sample ${selection.file.name}`}
@@ -103,7 +110,7 @@ export function AnalyzeView() {
               type="button"
               onClick={submit}
               disabled={submitting}
-              className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-brand-600 px-4 py-2.5 font-medium text-white shadow-sm hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600"
+              className="press inline-flex w-full items-center justify-center gap-2 rounded-lg bg-brand-600 px-4 py-2.5 font-medium text-white shadow-sm hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600"
             >
               <MicroscopeIcon aria-hidden="true" weight="bold" className="size-5" />
               {submitting ? "Analyzing…" : "Run screening"}
@@ -114,7 +121,7 @@ export function AnalyzeView() {
                 Choose or drop another file to replace this sample
               </p>
             ) : null}
-          </>
+          </Fade>
         ) : (
           <div className="rounded-xl border border-dashed border-line p-6 text-center text-sm text-muted">
             No sample selected yet. The preview and the screening action appear here.

@@ -7,6 +7,7 @@ import Link from "next/link";
 import { EmptyState } from "@/components/common/EmptyState";
 import { ErrorState } from "@/components/common/ErrorState";
 import { StatusBadge } from "@/components/common/StatusBadge";
+import { Reveal } from "@/components/motion/Reveal";
 import { useApiResource } from "@/hooks/useApiResource";
 import { apiUrl, listAnalyses } from "@/lib/api";
 import { classLabel, DECISION_LABEL, DECISION_TONE, formatDateTime, percent } from "@/lib/format";
@@ -18,7 +19,7 @@ export function HistoryView() {
     return (
       <div role="status" aria-label="Loading analysis history" className="space-y-2">
         {[0, 1, 2].map((key) => (
-          <div key={key} className="h-20 animate-pulse rounded-xl bg-surface" />
+          <div key={key} className="h-20 skeleton rounded-xl" />
         ))}
       </div>
     );
@@ -47,11 +48,11 @@ export function HistoryView() {
 
   return (
     <ul className="space-y-2">
-      {state.data.items.map((item) => (
-        <li key={item.id}>
+      {state.data.items.map((item, index) => (
+        <Reveal as="li" key={item.id} index={index}>
           <Link
             href={`/results/${item.id}`}
-            className="flex items-center gap-4 rounded-xl border border-line bg-surface p-3 shadow-sm hover:border-brand-500/60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600"
+            className="lift flex items-center gap-4 rounded-xl border border-line bg-surface p-3 shadow-sm hover:border-brand-500/60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600"
           >
             <span className="relative size-14 shrink-0 overflow-hidden rounded-lg bg-canvas">
               <Image src={apiUrl(item.image_url)} alt="" fill unoptimized sizes="56px" className="object-cover" />
@@ -65,7 +66,7 @@ export function HistoryView() {
             </span>
             <StatusBadge tone={DECISION_TONE[item.decision_status]} label={DECISION_LABEL[item.decision_status]} />
           </Link>
-        </li>
+        </Reveal>
       ))}
     </ul>
   );

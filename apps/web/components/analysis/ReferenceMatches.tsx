@@ -31,12 +31,13 @@ export function ReferenceMatches({ retrieval, predictedClass, minReferenceSimila
         <MetricCard label="References shown" value={String(retrieval.matches.length)} hint="Nearest neighbours" />
       </dl>
       <ol className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-        {retrieval.matches.map((match) => (
+        {retrieval.matches.map((match, index) => (
           <ReferenceMatchCard
             key={match.reference_id}
             match={match}
             predictedClass={predictedClass}
             minSimilarity={minReferenceSimilarity}
+            index={index}
           />
         ))}
       </ol>

@@ -1,4 +1,4 @@
-# HerbaScope X — Architecture Decision Record
+# HerbaScope X - Architecture Decision Record
 
 Every significant design choice, why it was made, and what was rejected. Numbers quoted here
 come from the generated reports in [`docs/reports/`](reports/); rerunning the pipeline regenerates
@@ -28,6 +28,7 @@ those reports.
 | [020](#adr-020-configurable-embedding-recipe) | Configurable embedding recipe: backbone, resolution, pooling, dihedral views |
 | [021](#adr-021-model-release-manifest) | Hash-verified model release manifest |
 | [022](#adr-022-pre-registered-model-improvement-protocol) | Pre-registered improvement ladders selected by grouped cross-validation |
+| [023](#adr-023-motion-without-an-animation-library) | CSS-only motion whose finished state is the base state |
 
 ---
 
@@ -405,7 +406,7 @@ hypothesis per rung, the primary metric, the adoption rule and a latency budget.
 
 | Release | Recipe | CV accuracy | Test accuracy | Test passes (correct) | Held-out passes (correct) |
 |---|---|---|---|---|---|
-| v1 | 224 px, `cls`, 1 view | — | 88.9% | 24 (24) | 52 (21) |
+| v1 | 224 px, `cls`, 1 view | - | 88.9% | 24 (24) | 52 (21) |
 | v2 | 448 px, `cls_last4`, 4 rotations, trained on views | 90.6% | 95.8% | 16 (15) | 17 (7) |
 | v3 | 518 px, `cls_last4`, 4 rotations, trained on views | 91.6% | 95.8% | 26 (26) | 34 (7) |
 | v4 | 588 px, `cls_last4`, 4 rotations, trained on views | 92.0% | 97.2% | 19 (18) | 20 (2) |
@@ -431,3 +432,47 @@ hypothesis per rung, the primary metric, the adoption rule and a latency budget.
 evaluation into the model. *Fine-tuning DINOv2*: 341 training images, and it would move the
 shared embedding space (ADR-006). *Adopting rungs over the latency budget*: they are reported as
 accuracy references only.
+
+## ADR-023: Motion without an animation library
+
+**Decision.** Every animation in the frontend is CSS, defined once in `app/globals.css`:
+motion tokens (`--ease-settle`, `--ease-glide`, three durations), utilities (`press`, `lift`,
+`sweep`, `meter-fill`, `marker-pop`, `badge-pop`, `reveal-*`, `fade-in`, `page-enter`,
+`skeleton`) and keyframes. Three rules hold everywhere:
+1. **The finished state is the base state.** An element carries its real width, position and
+   text; the animation only scales, fades or offsets it on the way in. If the animation never
+   runs, the reader sees the correct value.
+2. **Numbers are never animated.** Confidences, similarities, distances and thresholds are
+   printed from the API response and do not move.
+3. `prefers-reduced-motion: reduce` disables every animation, and `@media print` forces the
+   finished state.
+
+The only JavaScript is `components/motion/Reveal.tsx`: after mount it adds a hiding class and
+an `IntersectionObserver` removes it when the block scrolls into view. Without JavaScript, or
+without `IntersectionObserver`, nothing is ever hidden.
+
+**Why.**
+- *A screening tool must not display a number that is not the result.* This was measured, not
+  assumed: an earlier version of this work used the `motion` library to count the classifier
+  confidence up from zero. In a tab that was not compositing, the animation frame never ran and
+  the result page showed **"Classifier confidence 0.0%"** for a sample whose real confidence was
+  99.9%. A paused animation must degrade to the truth, which is only possible when the truth is
+  the base state.
+- *No new dependency.* The app stays offline-first and small; springs are tuned cubic-bezier
+  curves rather than a runtime physics engine.
+- *Cheap to composite.* Only `transform` and `opacity` animate, so bars and cards do not
+  trigger layout.
+
+**Where motion is used.** Scroll reveal of result sections, history rows, reference cards and
+landing cards (staggered, capped at 0.3 s); meter fills growing from the left; the unknown-risk
+marker popping in at its measured position; the decision badge settling in; press feedback on
+buttons and the upload target; hover lift and image zoom on reference cards; an indeterminate
+sweep on the analysis progress panel; a shimmer for loading placeholders; a short route
+transition.
+
+**Rejected.** *`motion` / Framer Motion* (installed, measured, removed): it hides content and
+values behind animation frames, and adds about 30 kB for transitions CSS already does.
+*Counting numbers up*: every intermediate frame is a number the system never produced.
+*Animating the pipeline stages one by one during analysis*: the API runs the whole pipeline in
+one request, so staged progress would be invented; the panel shows an indeterminate sweep and
+an elapsed-seconds counter instead.

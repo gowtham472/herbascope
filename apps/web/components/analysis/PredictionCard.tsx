@@ -37,7 +37,7 @@ export function PredictionCard({ prediction, thresholds }: PredictionCardProps) 
         ))}
       </ul>
       <p className="mt-4 text-xs text-muted">
-        A confidence score alone cannot tell whether the sample belongs to any supported class — see the reference
+        A confidence score alone cannot tell whether the sample belongs to any supported class - see the reference
         evidence and unknown risk.
       </p>
     </Panel>

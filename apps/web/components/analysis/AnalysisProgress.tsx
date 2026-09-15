@@ -38,6 +38,9 @@ export function AnalysisProgress({ encoder }: { encoder: string }) {
           </p>
         </div>
       </div>
+      {/* Indeterminate on purpose: the API runs every stage in one request, so a percentage
+          or a stage-by-stage animation would be invented progress. */}
+      <div className="sweep relative mt-4 h-1 overflow-hidden rounded-full bg-brand-50" aria-hidden="true" />
       <ol className="mt-4 grid gap-1.5 text-sm text-muted sm:grid-cols-2">
         {stages.map((stage, index) => (
           <li key={stage} className="flex gap-2">

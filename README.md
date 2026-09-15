@@ -87,7 +87,7 @@ held-out results never decide. Each promoted selection is rebuilt and evaluated 
 
 | Release | Embedding recipe | CV accuracy | Test accuracy | Test passes (correct) | Held-out wrong-class passes |
 |---|---|---|---|---|---|
-| v1 | 224 px, final-block CLS, 1 view | — | 88.9% | 24 (24) | 31 |
+| v1 | 224 px, final-block CLS, 1 view | - | 88.9% | 24 (24) | 31 |
 | v2 | 448 px, last-4-block CLS, 4 rotations | 90.6% | 95.8% | 16 (15) | 10 |
 | v3 | 518 px, last-4-block CLS, 4 rotations | 91.6% | 95.8% | 26 (26) | 27 |
 | v4 (current) | 588 px, last-4-block CLS, 4 rotations | 92.0% | **97.2%** | 19 (18) | 18 |
@@ -106,7 +106,7 @@ the library does not contain.
 ```text
 apps/web/                 Next.js 16 frontend (App Router, TypeScript, Tailwind v4, Phosphor)
   app/                    /, /analyze, /results/[id], /history
-  components/             upload/, analysis/, report/, history/, common/
+  components/             upload/, analysis/, report/, history/, common/, motion/
   lib/api.ts              typed API client          types/index.ts   API contract types
   __tests__/              Vitest + Testing Library tests (fixtures captured from the real API)
 services/api/app/         FastAPI service
@@ -333,7 +333,7 @@ Verified counts are in [`docs/reports/dataset_report.md`](docs/reports/dataset_r
 | Document | Content |
 |---|---|
 | [`docs/Project_Explained.md`](docs/Project_Explained.md) | The whole project explained in plain language and technical detail: problem, solution, ML, data, architecture, stack choices, creative decisions |
-| [`docs/Architecture_Decisions.md`](docs/Architecture_Decisions.md) | Why every component is built the way it is (ADR-001 … 021) |
+| [`docs/Architecture_Decisions.md`](docs/Architecture_Decisions.md) | Why every component is built the way it is (ADR-001 … 023) |
 | [`docs/reports/dataset_report.md`](docs/reports/dataset_report.md) | Generated dataset lock: counts, duplicates, splits, licenses |
 | [`docs/reports/evaluation_report.md`](docs/reports/evaluation_report.md) | Generated metrics, calibration, decision counts, ablation, findings |
 | `docs/reports/model_improvement_experiments-v*.md` | Generated model-improvement logs, one per phase: pre-registered ladder, cross-validated accuracy, adoption decisions |

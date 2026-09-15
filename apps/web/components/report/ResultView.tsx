@@ -10,6 +10,7 @@ import { PredictionCard } from "@/components/analysis/PredictionCard";
 import { ReferenceMatches } from "@/components/analysis/ReferenceMatches";
 import { UnknownRiskCard } from "@/components/analysis/UnknownRiskCard";
 import { ErrorState } from "@/components/common/ErrorState";
+import { Reveal } from "@/components/motion/Reveal";
 import { ImagePreview } from "@/components/upload/ImagePreview";
 import { useApiResource } from "@/hooks/useApiResource";
 import { apiUrl, getAnalysis } from "@/lib/api";
@@ -33,10 +34,10 @@ const NEW_ANALYSIS_LINK = (
 function LoadingResult() {
   return (
     <div role="status" aria-label="Loading screening result" className="grid gap-4 lg:grid-cols-3">
-      <div className="aspect-square animate-pulse rounded-xl bg-surface" />
-      <div className="animate-pulse rounded-xl bg-surface lg:col-span-2" />
+      <div className="aspect-square skeleton rounded-xl" />
+      <div className="skeleton rounded-xl lg:col-span-2" />
       {[0, 1, 2].map((key) => (
-        <div key={key} className="h-72 animate-pulse rounded-xl bg-surface" />
+        <div key={key} className="h-72 skeleton rounded-xl" />
       ))}
     </div>
   );
@@ -58,38 +59,54 @@ function ResultReport({ analysis }: { analysis: AnalysisResponse }) {
       </header>
 
       <div className="grid gap-6 lg:grid-cols-[22rem_1fr]">
-        <ImagePreview
-          src={apiUrl(sample.image_url)}
-          alt={`Uploaded sample ${sample.filename}`}
-          details={[
-            ["Format", sample.format],
-            ["Dimensions", `${sample.width} × ${sample.height} px`],
-          ]}
-        />
-        <div className="space-y-6">
+        <Reveal>
+          <ImagePreview
+            src={apiUrl(sample.image_url)}
+            alt={`Uploaded sample ${sample.filename}`}
+            details={[
+              ["Format", sample.format],
+              ["Dimensions", `${sample.width} × ${sample.height} px`],
+            ]}
+          />
+        </Reveal>
+        <Reveal index={1} className="space-y-6">
           <DecisionCard decision={decision} />
           <ScreeningSummary explanation={analysis.explanation} />
-        </div>
+        </Reveal>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
-        <PredictionCard prediction={prediction} thresholds={decision.thresholds} />
-        <UnknownRiskCard unknown={unknown} maxUnknownRisk={decision.thresholds.max_unknown_risk} />
-        <EvidenceAgreementCard prediction={prediction} retrieval={retrieval} evidence={evidence} />
+        <Reveal>
+          <PredictionCard prediction={prediction} thresholds={decision.thresholds} />
+        </Reveal>
+        <Reveal index={1}>
+          <UnknownRiskCard unknown={unknown} maxUnknownRisk={decision.thresholds.max_unknown_risk} />
+        </Reveal>
+        <Reveal index={2}>
+          <EvidenceAgreementCard prediction={prediction} retrieval={retrieval} evidence={evidence} />
+        </Reveal>
       </div>
 
-      <ReferenceMatches
-        retrieval={retrieval}
-        predictedClass={prediction.class_name}
-        minReferenceSimilarity={decision.thresholds.min_reference_similarity}
-      />
+      <Reveal>
+        <ReferenceMatches
+          retrieval={retrieval}
+          predictedClass={prediction.class_name}
+          minReferenceSimilarity={decision.thresholds.min_reference_similarity}
+        />
+      </Reveal>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <ImageQualityCard quality={evidence.quality} />
-        <ModelMetadata model={model} />
+        <Reveal>
+          <ImageQualityCard quality={evidence.quality} />
+        </Reveal>
+        <Reveal index={1}>
+          <ModelMetadata model={model} />
+        </Reveal>
       </div>
 
-      <LimitationsCard limitations={analysis.limitations} disclaimer={analysis.disclaimer} />
+      <Reveal>
+        <LimitationsCard limitations={analysis.limitations} disclaimer={analysis.disclaimer} />
+      </Reveal>
     </div>
   );
 }
