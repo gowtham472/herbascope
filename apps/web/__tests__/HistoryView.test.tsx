@@ -1,4 +1,5 @@
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { HistoryView } from "@/components/history/HistoryView";
@@ -27,6 +28,20 @@ describe("HistoryView", () => {
       expect(link).toHaveAttribute("href", `/results/${item.id}`);
       expect(link).toHaveTextContent(DECISION_LABEL[item.decision_status]);
       expect(link).toHaveTextContent(percent(item.confidence));
+    }
+  });
+
+  it("filters the list by decision", async () => {
+    vi.mocked(listAnalyses).mockResolvedValue(analyses);
+    render(<HistoryView />);
+    await screen.findByRole("link", { name: new RegExp(analyses.items[0].filename) });
+    const passes = analyses.items.filter((item) => item.decision_status === "PRELIMINARY_PASS");
+
+    await userEvent.click(screen.getByRole("button", { name: new RegExp(DECISION_LABEL.PRELIMINARY_PASS, "i") }));
+
+    expect(screen.getAllByRole("link", { name: /\.png/ })).toHaveLength(passes.length);
+    for (const item of passes) {
+      expect(screen.getByRole("link", { name: new RegExp(item.filename) })).toBeInTheDocument();
     }
   });
 

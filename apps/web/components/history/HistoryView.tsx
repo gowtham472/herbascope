@@ -3,6 +3,7 @@
 import { ClockCounterClockwiseIcon, MicroscopeIcon } from "@phosphor-icons/react/ssr";
 import Image from "next/image";
 import Link from "next/link";
+import { useState } from "react";
 
 import { EmptyState } from "@/components/common/EmptyState";
 import { ErrorState } from "@/components/common/ErrorState";
@@ -11,9 +12,20 @@ import { Reveal } from "@/components/motion/Reveal";
 import { useApiResource } from "@/hooks/useApiResource";
 import { apiUrl, listAnalyses } from "@/lib/api";
 import { classLabel, DECISION_LABEL, DECISION_TONE, formatDateTime, percent } from "@/lib/format";
+import type { DecisionStatus } from "@/types";
+
+type Filter = DecisionStatus | "ALL";
+
+const FILTERS: { value: Filter; label: string }[] = [
+  { value: "ALL", label: "All" },
+  { value: "PRELIMINARY_PASS", label: DECISION_LABEL.PRELIMINARY_PASS },
+  { value: "REVIEW_REQUIRED", label: DECISION_LABEL.REVIEW_REQUIRED },
+  { value: "UNKNOWN", label: DECISION_LABEL.UNKNOWN },
+];
 
 export function HistoryView() {
   const { state, retry } = useApiResource("history", listAnalyses);
+  const [filter, setFilter] = useState<Filter>("ALL");
 
   if (state.status === "loading") {
     return (
@@ -46,9 +58,43 @@ export function HistoryView() {
     );
   }
 
+  const counts = state.data.items.reduce<Record<string, number>>(
+    (totals, item) => ({ ...totals, [item.decision_status]: (totals[item.decision_status] ?? 0) + 1 }),
+    {},
+  );
+  const visible = filter === "ALL" ? state.data.items : state.data.items.filter((item) => item.decision_status === filter);
+
   return (
-    <ul className="space-y-2">
-      {state.data.items.map((item, index) => (
+    <>
+      <div role="group" aria-label="Filter by decision" className="mb-4 flex flex-wrap gap-2">
+        {FILTERS.map(({ value, label }) => {
+          const count = value === "ALL" ? state.data.items.length : (counts[value] ?? 0);
+          const active = filter === value;
+          return (
+            <button
+              key={value}
+              type="button"
+              aria-pressed={active}
+              onClick={() => setFilter(value)}
+              className={`press inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600 ${
+                active ? "border-brand-500 bg-brand-50 text-brand-700" : "border-line bg-surface text-muted hover:text-ink"
+              }`}
+            >
+              {label}
+              <span className="font-mono text-xs tabular-nums">{count}</span>
+            </button>
+          );
+        })}
+      </div>
+
+      {visible.length === 0 ? (
+        <p role="status" className="rounded-xl border border-dashed border-line p-6 text-center text-sm text-muted">
+          No analyses with this decision.
+        </p>
+      ) : null}
+
+      <ul className="space-y-2">
+        {visible.map((item, index) => (
         <Reveal as="li" key={item.id} index={index}>
           <Link
             href={`/results/${item.id}`}
@@ -64,10 +110,11 @@ export function HistoryView() {
               </span>
               <span className="block font-mono text-xs text-muted">{formatDateTime(item.created_at)}</span>
             </span>
-            <StatusBadge tone={DECISION_TONE[item.decision_status]} label={DECISION_LABEL[item.decision_status]} />
-          </Link>
-        </Reveal>
-      ))}
-    </ul>
+              <StatusBadge tone={DECISION_TONE[item.decision_status]} label={DECISION_LABEL[item.decision_status]} />
+            </Link>
+          </Reveal>
+        ))}
+      </ul>
+    </>
   );
 }
