@@ -21,14 +21,22 @@ def test_registered_ladders_are_valid_and_ordered(ladder):
         assert config["backbone"] in experiments.backbones
 
 
-def test_phase_two_starts_from_the_phase_one_selection():
-    phase_one = load_experiments_config(paths.REPO_ROOT / "ml" / "configs" / "experiments-v1.json")
-    phase_two = load_experiments_config(paths.REPO_ROOT / "ml" / "configs" / "experiments-v2.json")
-    selected = phase_one.baseline.config.model_dump()
-    for rung_id in ("E1", "E3"):  # rungs adopted in experiments-v1
-        rung = next(r for r in phase_one.ladder if r.id == rung_id)
+@pytest.mark.parametrize(
+    ("previous", "adopted", "following"),
+    [
+        ("experiments-v1", ("E1", "E3"), "experiments-v2"),
+        ("experiments-v2", ("F1", "F2"), "experiments-v3"),
+    ],
+)
+def test_each_phase_starts_from_the_previous_selection(previous, adopted, following):
+    configs = paths.REPO_ROOT / "ml" / "configs"
+    earlier = load_experiments_config(configs / f"{previous}.json")
+    later = load_experiments_config(configs / f"{following}.json")
+    selected = earlier.baseline.config.model_dump()
+    for rung_id in adopted:
+        rung = next(r for r in earlier.ladder if r.id == rung_id)
         selected = {**selected, **rung.change}
-    assert phase_two.baseline.config.model_dump() == selected
+    assert later.baseline.config.model_dump() == selected
 
 
 def test_ladder_change_must_stay_valid():
