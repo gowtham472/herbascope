@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import asdict, dataclass
+from datetime import UTC, datetime
 from pathlib import Path
 
 import numpy as np
@@ -38,11 +39,31 @@ from ml.preprocessing.transforms import (
 POOLINGS = ("cls", "cls_patchmean")
 
 
-def download_pretrained(hub_id: str, revision: str, target: Path) -> None:
-    """Fetch pinned weights once so every later load is offline (local_files_only)."""
+def ensure_backbone(name: str, hub_id: str, revision: str, license_name: str, target: Path) -> bool:
+    """Cache pinned weights once so every later load is offline; returns True if downloaded.
+
+    Writes the SOURCE.json receipt that Dinov2Encoder reads for the model name and revision.
+    """
+    receipt = target / "SOURCE.json"
+    if receipt.is_file() and json.loads(receipt.read_text(encoding="utf-8")).get("revision") == revision:
+        return False
     model = AutoModel.from_pretrained(hub_id, revision=revision)
     target.mkdir(parents=True, exist_ok=True)
     model.save_pretrained(target, safe_serialization=True)
+    receipt.write_text(
+        json.dumps(
+            {
+                "model": name,
+                "hub_id": hub_id,
+                "revision": revision,
+                "license": license_name,
+                "downloaded_at": datetime.now(UTC).isoformat(timespec="seconds"),
+            },
+            indent=2,
+        ),
+        encoding="utf-8",
+    )
+    return True
 
 
 def l2_normalize(features: np.ndarray) -> np.ndarray:

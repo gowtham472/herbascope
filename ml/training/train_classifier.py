@@ -22,6 +22,7 @@ import numpy as np
 
 from ml import paths
 from ml.classifiers.classifier import EmbeddingClassifier, fit_logistic_regression, select_regularization
+from ml.encoders.dinov2_encoder import l2_normalize
 from ml.pipeline_config import load_pipeline_config
 from ml.preprocessing.transforms import PREPROCESSING_VERSION
 from ml.training import datasets as ds
@@ -32,13 +33,12 @@ def _file_sha256(name: str) -> str:
 
 
 def training_rows(
-    embeddings: ds.SplitEmbeddings, labels: np.ndarray, on_views: bool
+    view_vectors: np.ndarray, labels: np.ndarray, on_views: bool
 ) -> tuple[np.ndarray, np.ndarray]:
-    """Design matrix for fitting: view-averaged vectors, or every dihedral view as its own row."""
+    """Design matrix from (views, N, D) embeddings: view-averaged rows, or every view as a row."""
     if not on_views:
-        return embeddings.vectors, labels
-    views = embeddings.view_vectors
-    return views.reshape(-1, views.shape[-1]), np.tile(labels, views.shape[0])
+        return l2_normalize(view_vectors.mean(axis=0)), labels
+    return view_vectors.reshape(-1, view_vectors.shape[-1]), np.tile(labels, view_vectors.shape[0])
 
 
 def main() -> int:
@@ -52,7 +52,7 @@ def main() -> int:
     index_of = {name: i for i, name in enumerate(classes)}
     y_train = train.split.frame["class_name"].map(index_of).to_numpy()
     y_validation = validation.split.frame["class_name"].map(index_of).to_numpy()
-    x_fit, y_fit = training_rows(train, y_train, config.classifier.train_on_views)
+    x_fit, y_fit = training_rows(train.view_vectors, y_train, config.classifier.train_on_views)
 
     c_value, scores = select_regularization(
         (x_fit, y_fit),

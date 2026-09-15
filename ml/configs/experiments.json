@@ -1,0 +1,78 @@
+{
+  "version": "experiments-v1",
+  "registered_at": "2026-09-15",
+  "objective": "Improve Mikrobat species classification accuracy of the frozen-encoder pipeline without training or fine-tuning the encoder.",
+  "primary_metric": "Out-of-fold accuracy from grouped, stratified 5-fold cross-validation on the development pool (train + validation splits).",
+  "adoption_rule": "Rungs are evaluated in the registered order, each applying its change to the best configuration adopted so far. A rung is adopted if its encoding time fits the latency budget and its out-of-fold accuracy is higher than the current best, or equal with a lower out-of-fold log-loss. Rungs over the latency budget are evaluated and reported but cannot be adopted. Validation, test and held-out results are reported for every rung and are never used to decide adoption.",
+  "latency_budget_ms": 3000,
+  "latency_rationale": "Interactive screening: encoding one uploaded image (all views) must take at most 3 s on the reference laptop CPU (AMD Ryzen 7 7735HS).",
+  "cv_folds": 5,
+  "feature_views": 8,
+  "backbones": {
+    "vits14": {
+      "name": "DINOv2 ViT-S/14",
+      "hub_id": "facebook/dinov2-small",
+      "revision": "ed25f3a31f01632728cabb09d1542f84ab7b0056",
+      "local_dir": "dinov2_vits14",
+      "license": "Apache-2.0"
+    },
+    "vitb14": {
+      "name": "DINOv2 ViT-B/14",
+      "hub_id": "facebook/dinov2-base",
+      "revision": "f9e44c814b77203eaa57a6bdbbd535f21ede1415",
+      "local_dir": "dinov2_vitb14",
+      "license": "Apache-2.0"
+    },
+    "vitl14": {
+      "name": "DINOv2 ViT-L/14",
+      "hub_id": "facebook/dinov2-large",
+      "revision": "47b73eefe95e8d44ec3623f8890bd894b6ea2d6c",
+      "local_dir": "dinov2_vitl14",
+      "license": "Apache-2.0"
+    }
+  },
+  "baseline": {
+    "id": "E0",
+    "title": "Baseline: ViT-S/14, 224 px, CLS token, single view",
+    "hypothesis": "Reference point: the configuration shipped in the MVP.",
+    "config": {
+      "backbone": "vits14",
+      "input_size": 224,
+      "pooling": "cls",
+      "views": 1,
+      "train_on_views": false
+    }
+  },
+  "ladder": [
+    {
+      "id": "E1",
+      "title": "Orientation augmentation and test-time averaging",
+      "hypothesis": "Micrographs have no canonical orientation; training on all eight dihedral views and averaging them at inference removes orientation as a nuisance factor.",
+      "change": {"views": 8, "train_on_views": true}
+    },
+    {
+      "id": "E2",
+      "title": "CLS + mean patch-token pooling",
+      "hypothesis": "Patch tokens retain local cell-wall, crystal and trichome texture that the CLS summary discards.",
+      "change": {"pooling": "cls_patchmean"}
+    },
+    {
+      "id": "E3",
+      "title": "Encoder resolution 308 px",
+      "hypothesis": "Resizing the 300 px micrographs to 224 px discards fine structure; 308 px (22 x 22 patches) preserves it.",
+      "change": {"input_size": 308}
+    },
+    {
+      "id": "E4",
+      "title": "ViT-B/14 backbone",
+      "hypothesis": "A larger frozen encoder (86M parameters) produces more separable embeddings.",
+      "change": {"backbone": "vitb14"}
+    },
+    {
+      "id": "E5",
+      "title": "ViT-L/14 backbone",
+      "hypothesis": "The largest practical frozen encoder (304M parameters) improves separability further; measured benchmark cost suggests it exceeds the latency budget, so it establishes an accuracy reference rather than a production candidate.",
+      "change": {"backbone": "vitl14"}
+    }
+  ]
+}

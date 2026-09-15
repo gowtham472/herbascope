@@ -3,7 +3,7 @@
 Assets (all pinned in ml/configs/pipeline.json):
   * Mikrobat microscopy dataset  -> data/raw/mikrobat/   (GitHub archive at a fixed commit)
   * DIMPSAR far-OOD source       -> data/raw/dimpsar/    (Hugging Face parquet at a fixed revision)
-  * DINOv2 ViT-S/14 weights      -> models/pretrained/dinov2_vits14/
+  * DINOv2 backbone weights      -> models/pretrained/<backbone>/  (pinned hub revision)
 
 Each download writes a SOURCE.json receipt (URL, revision, SHA-256, timestamp). Existing
 assets whose receipt matches the pinned revision are left untouched; data/raw is immutable.
@@ -24,8 +24,8 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from ml import paths
-from ml.encoders.dinov2_encoder import download_pretrained
-from ml.pipeline_config import Backbone, load_pipeline_config
+from ml.encoders.dinov2_encoder import ensure_backbone
+from ml.pipeline_config import load_pipeline_config
 
 CHUNK_BYTES = 1 << 20
 
@@ -116,30 +116,18 @@ def download_dimpsar() -> None:
     print(f"[dimpsar] saved to {target}")
 
 
-def download_backbone(backbone: Backbone) -> None:
-    target = paths.PRETRAINED_DIR / backbone.local_dir
-    if _receipt_matches(target, "revision", backbone.revision):
-        print(f"[encoder] {backbone.name} already cached")
-        return
-    print(f"[encoder] caching {backbone.hub_id}@{backbone.revision[:7]}")
-    download_pretrained(backbone.hub_id, backbone.revision, target)
-    _write_receipt(
-        target,
-        {
-            "model": backbone.name,
-            "hub_id": backbone.hub_id,
-            "revision": backbone.revision,
-            "license": backbone.license,
-            "downloaded_at": _utc_now(),
-        },
-    )
-    print(f"[encoder] saved to {target}")
-
-
 def main() -> int:
     download_mikrobat()
     download_dimpsar()
-    download_backbone(load_pipeline_config().encoder.backbone)
+    backbone = load_pipeline_config().encoder.backbone
+    downloaded = ensure_backbone(
+        backbone.name,
+        backbone.hub_id,
+        backbone.revision,
+        backbone.license,
+        paths.PRETRAINED_DIR / backbone.local_dir,
+    )
+    print(f"[encoder] {backbone.name} {'downloaded' if downloaded else 'already cached'}")
     return 0
 
 

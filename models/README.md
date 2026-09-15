@@ -18,6 +18,7 @@ startup; publishing a new release (and restarting the API) swaps the model witho
 | `indexes/references.faiss` | `ml.training.build_index` | FAISS `IndexFlatIP` over reference embeddings |
 | `indexes/reference_metadata.json` | `ml.training.build_index` | Reference records and selection provenance |
 | `reports/` | `ml.evaluation.evaluate` | `evaluation.json`, per-sample `evaluation_samples.csv` |
+| `experiments/` | `ml.experiments.run_experiments` | Cached token features per backbone and resolution, ladder `results.json` |
 
 Every artifact records the embedding fingerprint (backbone + revision + preprocessing version +
 input size + pooling + views + dimension). Loading fails if any fingerprint, index version or

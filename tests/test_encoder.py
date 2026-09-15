@@ -2,7 +2,6 @@ import numpy as np
 import pytest
 
 from ml.encoders.dinov2_encoder import EncoderSettings, l2_normalize, pool_features
-from ml.training import datasets as ds
 from ml.training.train_classifier import training_rows
 
 
@@ -37,22 +36,17 @@ def test_encoder_settings_round_trip(tmp_path):
     assert EncoderSettings.load(tmp_path / "encoder.json") == settings
 
 
-def _embeddings(views: int) -> ds.SplitEmbeddings:
-    view_vectors = np.arange(views * 3 * 2, dtype=np.float32).reshape(views, 3, 2)
-    return ds.SplitEmbeddings(
-        split=None, vectors=view_vectors.mean(axis=0), view_vectors=view_vectors, fingerprint="f"
-    )
+VIEW_VECTORS = np.arange(4 * 3 * 2, dtype=np.float32).reshape(4, 3, 2)
 
 
-def test_training_rows_without_augmentation_use_view_average():
-    embeddings = _embeddings(views=4)
-    x, y = training_rows(embeddings, np.array([0, 1, 0]), on_views=False)
+def test_training_rows_without_augmentation_use_normalised_view_average():
+    x, y = training_rows(VIEW_VECTORS, np.array([0, 1, 0]), on_views=False)
     assert x.shape == (3, 2) and y.tolist() == [0, 1, 0]
+    assert np.allclose(x, l2_normalize(VIEW_VECTORS.mean(axis=0)))
 
 
 def test_training_rows_with_augmentation_keep_labels_aligned_to_views():
-    embeddings = _embeddings(views=4)
-    x, y = training_rows(embeddings, np.array([0, 1, 0]), on_views=True)
+    x, y = training_rows(VIEW_VECTORS, np.array([0, 1, 0]), on_views=True)
     assert x.shape == (12, 2)
     assert y.tolist() == [0, 1, 0] * 4
-    assert np.array_equal(x[3], embeddings.view_vectors[1, 0])
+    assert np.array_equal(x[3], VIEW_VECTORS[1, 0])
