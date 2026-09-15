@@ -38,7 +38,7 @@ a deterministic, versioned policy to decide: **PRELIMINARY_PASS**, **REVIEW_REQU
 flowchart TD
     IMG[Microscopic image] --> VAL[Validate + decode]
     VAL --> Q[Image quality]
-    VAL --> PRE[Grayscale · pad to square · 224 px]
+    VAL --> PRE[Grayscale · pad to square · 448 px · 4 rotations]
     PRE --> ENC[DINOv2 ViT-S/14 embedding]
     ENC --> CLS[Logistic regression]
     ENC --> RET[FAISS reference retrieval]
@@ -47,7 +47,7 @@ flowchart TD
     RET --> EVD
     UNK --> EVD
     Q --> EVD
-    EVD --> DEC{Decision policy v1}
+    EVD --> DEC{Calibrated decision policy}
     DEC --> P[PRELIMINARY_PASS]
     DEC --> R[REVIEW_REQUIRED]
     DEC --> U[UNKNOWN]
@@ -56,8 +56,8 @@ flowchart TD
 | Stage | What it does |
 |---|---|
 | Quality | Resolution, focus, exposure, clipping and specimen visibility, with bounds calibrated on reference training images |
-| Encoder | Frozen DINOv2 ViT-S/14; L2-normalised CLS embedding |
-| Classifier | Logistic regression; C chosen by validation log-loss |
+| Encoder | Frozen DINOv2 ViT-S/14 at 448 px; CLS tokens of the last 4 blocks, each L2-normalised and concatenated (1536-d), averaged over 4 rotations |
+| Classifier | Logistic regression trained on every rotation view; C chosen by validation log-loss |
 | Retrieval | 40 curated reference micrographs (k-means medoids), exact cosine search |
 | Unknown | Distance = 1 − mean similarity to the 5 nearest references; threshold chosen to minimise out-of-distribution false acceptance while keeping ≥ 95% known acceptance |
 | Evidence | Agreement between classifier and retrieval, described as complementary analyses of the same representation, not independent tests |
@@ -70,16 +70,25 @@ for training or calibration:
 
 | Set | What it is | Result |
 |---|---|---|
-| `test` (72) | Mikrobat, fragment types present in the reference library | Accuracy 88.9%; 24 PRELIMINARY_PASS, **all correct**; all 8 misclassifications routed to REVIEW |
+| `test` (72) | Mikrobat, fragment types present in the reference library | **Accuracy 95.8%** (69/72); 16 PRELIMINARY_PASS, 15 correct; 2 of 3 misclassifications routed to REVIEW |
 | `ood_evaluation` (200) | DIMPSAR field-leaf photos, classes not used in calibration | **200/200 UNKNOWN**, 0 false passes |
-| `heldout_known` (104) | Mikrobat fragment types withheld from training and references | Accuracy 49.0%; PASS precision 40.4% (see limitation below) |
+| `heldout_known` (104) | Mikrobat fragment types withheld from training and references | Accuracy 55.8%; PASS precision 41.2% (see limitation below) |
 
 Ablation, measured on `test` and OOD:
 
 | System | Test wrong-class accepted | OOD false acceptance |
 |---|---|---|
-| Classifier only | 8 | 100% |
-| Full evidence + decision | 0 | 0% |
+| Classifier only | 3 | 100% |
+| Full evidence + decision | 1 | 0% |
+
+**Model improvement.** Release v1 (224 px, final-block CLS, one view) scored 88.9% on test.
+Pre-registered experiment ladders, selected only by grouped cross-validation on the development
+pool, raised cross-validated accuracy to 90.6% and test accuracy to 95.8%
+([phase 2 log](docs/reports/model_improvement_experiments-v2.md)). The trade-off is reported, not
+hidden: across test and held-out material, wrong-class passes fell from 31 to 11, but correct
+passes fell from 45 to 22. Retrieval over the 40-image reference library did not improve with the
+classifier (test top-1 reference class accuracy 88.9% → 76.4%), so HIGH agreement, a PASS
+requirement, is rarer, and one test sample now passes with the wrong class.
 
 **Key finding.** Screening conclusions only transfer to fragment types represented in the
 reference library. On unseen fragment types, the classifier and retrieval can agree confidently
@@ -122,7 +131,7 @@ dependencies, datasets and weights. A GPU is not needed. Commands run from the r
 ```powershell
 py -3.12 -m venv .venv
 .\.venv\Scripts\python -m pip install -r requirements-dev.txt
-.\.venv\Scripts\python -m scripts.run_pipeline      # download, train, calibrate, evaluate (~2-3 min after downloads)
+.\.venv\Scripts\python -m scripts.run_pipeline      # download, train, calibrate, evaluate (~30 min on a laptop CPU after downloads)
 pnpm --dir apps/web install
 ```
 
@@ -160,6 +169,23 @@ step can also be run on its own:
 
 On Windows use `.\.venv\Scripts\python`; on macOS/Linux use `.venv/bin/python`. The pipeline is
 deterministic: every source is pinned and every choice has a seed.
+
+### Model-improvement experiments
+
+Changes to the embedding recipe are tested before they reach `pipeline.json`. Each phase is a
+ladder registered in git (`ml/configs/experiments-v*.json`) before it runs: a hypothesis per rung,
+the primary metric, the adoption rule and a latency budget.
+
+```powershell
+.\.venv\Scripts\python -m ml.experiments.run_experiments --config ml/configs/experiments-v2.json
+```
+
+A rung is adopted only if it raises out-of-fold accuracy from grouped, stratified 5-fold
+cross-validation on train + validation (or ties with lower log-loss) and encodes an image within
+3 s. Test and held-out accuracy are reported for every rung but never decide adoption. Output:
+`models/experiments/<ladder>.json` and `docs/reports/model_improvement_<ladder>.md`. Token
+features are cached per backbone and resolution, so rungs that only change pooling or views do
+not re-encode.
 
 ## Running the app
 
@@ -257,8 +283,8 @@ by hand.** They are written by the calibration steps into `models/`.
 | File | Expected decision | Why |
 |---|---|---|
 | `strong_evidence.png` | PRELIMINARY_PASS | Mikrobat test image; confident classifier, unanimous references, low risk |
-| `conflicting_evidence.png` | REVIEW_REQUIRED | Classifier says sirih_merah; the reference library favours sirih |
-| `unknown.png` | UNKNOWN | DIMPSAR field photo; the classifier alone would say "sirih" at 83% |
+| `conflicting_evidence.png` | REVIEW_REQUIRED | Held-out sirih; the classifier says sirih, the reference library favours sirih_merah |
+| `unknown.png` | UNKNOWN | DIMPSAR field photo; the classifier alone would say "sirih_merah" at 58.9% |
 
 Offline checklist:
 1. Run `run_pipeline` once while online (it downloads datasets and DINOv2 weights).
@@ -300,9 +326,10 @@ Verified counts are in [`docs/reports/dataset_report.md`](docs/reports/dataset_r
 | Document | Content |
 |---|---|
 | [`docs/Project_Explained.md`](docs/Project_Explained.md) | The whole project explained in plain language and technical detail: problem, solution, ML, data, architecture, stack choices, creative decisions |
-| [`docs/Architecture_Decisions.md`](docs/Architecture_Decisions.md) | Why every component is built the way it is (ADR-001 … 019) |
+| [`docs/Architecture_Decisions.md`](docs/Architecture_Decisions.md) | Why every component is built the way it is (ADR-001 … 021) |
 | [`docs/reports/dataset_report.md`](docs/reports/dataset_report.md) | Generated dataset lock: counts, duplicates, splits, licenses |
 | [`docs/reports/evaluation_report.md`](docs/reports/evaluation_report.md) | Generated metrics, calibration, decision counts, ablation, findings |
+| [`docs/reports/model_improvement_experiments-v2.md`](docs/reports/model_improvement_experiments-v2.md) | Generated model-improvement log: pre-registered ladder, cross-validated accuracy, adoption decisions |
 | [`docs/reports/demo_cases.md`](docs/reports/demo_cases.md) | Generated presentation cases |
 | [`docs/Architecture.md`](docs/Architecture.md) | Original technical architecture specification (with implementation status) |
 | [`docs/Data_Set.md`](docs/Data_Set.md) | Microscopy-first dataset specification (with implementation status) |

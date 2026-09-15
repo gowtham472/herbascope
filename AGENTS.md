@@ -24,6 +24,9 @@ the bundled docs in `apps/web/node_modules/next/dist/docs/` before writing front
   shown to a user comes from a real artifact produced by the pipeline.
 - Thresholds are calibrated by `ml/training/calibrate_*.py` against the objectives in
   `ml/configs/pipeline.json`; never hard-code them.
+- Embedding-recipe changes go through a pre-registered ladder (`ml/configs/experiments-v*.json`,
+  run with `python -m ml.experiments.run_experiments --config ...`) and are adopted only by its
+  cross-validation rule, never by test or held-out accuracy.
 - Classifier and reference retrieval are "complementary analyses of the same visual
   representation" — never describe them as independent evidence.
 - Held-out Mikrobat fragment groups are "held-out known-material samples", never

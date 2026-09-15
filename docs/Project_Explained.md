@@ -28,7 +28,7 @@ regression classifier, (b) exact FAISS retrieval over a curated reference librar
 reference-distance out-of-distribution detector calibrated on real data. An evidence engine
 compares these signals, and a deterministic, versioned policy produces
 `PRELIMINARY_PASS / REVIEW_REQUIRED / UNKNOWN`. The system is served by FastAPI and a
-Next.js 16 UI, and runs fully offline on a laptop CPU in about 0.23 s per image.
+Next.js 16 UI, and runs fully offline on a laptop CPU in about 2 s per image.
 
 ---
 
@@ -100,7 +100,9 @@ They are not independent tests, and the system never claims they are (see §6.6)
    detail.
 4. **It prepares the image the same way every time**: black-and-white, padded to a square (never
    cropped), and resized.
-5. **An "expert eye" turns the image into 384 numbers** that describe what it looks like.
+5. **An "expert eye" turns the image into 1,536 numbers** that describe what it looks like. It
+   looks at the image in four rotations and averages them, because a microscope slide has no
+   "right way up".
 6. **Three analyses read those numbers**: a classifier guesses the plant, a search engine finds
    the 5 most similar reference images, and a distance check measures how unusual the sample is.
 7. **The evidence engine compares them.** Do the references agree with the prediction? How strong
@@ -116,8 +118,8 @@ They are not independent tests, and the system never claims they are (see §6.6)
 | Upload | `POST /api/v1/analyze`, multipart field `image`, MIME allow-list (415), size cap read with a one-byte overflow check (413) | `services/api/app/api/analyze.py` |
 | Decode | Pillow `verify()`, then a full decode, a format allow-list, a 50 MP memory guard, EXIF orientation (422 on failure) | `ml/preprocessing/image_io.py` |
 | Quality | Laplacian variance, mean brightness, clipped-pixel fraction, 8×8 tile detail coverage on a 224-px short-side canvas | `ml/preprocessing/quality.py` |
-| Transform | grayscale → mean-pad to square → bicubic 224 → ImageNet normalisation (`preprocess-v1`) | `ml/preprocessing/transforms.py` |
-| Embedding | DINOv2 ViT-S/14 `pooler_output` (layer-normalised CLS), L2-normalised, 384-d | `ml/encoders/dinov2_encoder.py` |
+| Transform | grayscale → mean-pad to square → bicubic 448 → ImageNet normalisation (`preprocess-v1`); four rotations | `ml/preprocessing/transforms.py` |
+| Embedding | DINOv2 ViT-S/14; layer-normalised CLS token of each of the last 4 blocks, each L2-normalised and concatenated (1536-d), averaged over the 4 rotations and L2-normalised | `ml/encoders/dinov2_encoder.py` |
 | Classifier | `LogisticRegression.predict_proba` | `ml/classifiers/classifier.py` |
 | Retrieval | FAISS `IndexFlatIP` top-5 + similarity-weighted class vote | `ml/retrieval/faiss_store.py` |
 | Unknown | distance = 1 − mean(top-5 cosine), threshold/boundary, logistic risk | `ml/uncertainty/unknown_detector.py` |
@@ -126,8 +128,10 @@ They are not independent tests, and the system never claims they are (see §6.6)
 | Orchestration | one class runs all of the above; the same class runs in evaluation | `ml/inference/screening_pipeline.py` |
 | Persistence | SQLite row + re-encoded PNG sample | `services/api/app/services/analysis_store.py` |
 
-Measured on the development laptop (AMD Ryzen 7 7735HS, CPU only): loading all artifacts takes
-0.76 s once at startup; one analysis takes about **0.23 s**.
+Measured on the development laptop (AMD Ryzen 7 7735HS, CPU only) by `scripts.smoke_test`:
+loading all artifacts takes 0.93 s once at startup; one analysis takes about **2.0 s**, of which
+encoding the four rotations is about 1.5 s. The 3 s latency budget is part of every
+model-improvement experiment (§7.1).
 
 ---
 
@@ -141,20 +145,23 @@ laptop, so we don't do that.
 
 Instead we **borrow a pair of very experienced eyes**: **DINOv2**, a vision model Meta AI
 already trained on a huge, general collection of images. We use it **frozen**, meaning we never
-change it. It looks at a micrograph and writes down 384 numbers describing the textures, edges,
+change it. It looks at a micrograph and writes down 1,536 numbers describing the textures, edges,
 shapes and patterns it sees. That list of numbers is called an **embedding**. It works like a
 fingerprint of what the image looks like: similar-looking images get similar fingerprints.
 
 On top of those fingerprints we train only a **tiny model**, a logistic regression. It learns
-**385 numbers** (one weight per embedding value, plus one offset) and trains in well under a
-second. By comparison, DINOv2 has **22,056,576** parameters, and we train none of them.
+**1,537 numbers** (one weight per embedding value, plus one offset) and trains in seconds. By
+comparison, DINOv2 has **22,056,576** parameters, and we train none of them.
 
 **Technical.**
 - **Encoder:** `facebook/dinov2-small` (ViT-S/14, 22.06 M parameters), pinned revision
   `ed25f3a`, loaded with `local_files_only=True`, run under `torch.inference_mode()`. It sees a
-  224×224 input as 16×16 = 256 patches plus a CLS token. We take `pooler_output` (the
-  layer-normalised CLS token), 384-d, and L2-normalise it so that inner product = cosine
-  similarity.
+  448×448 input as 32×32 = 1,024 patches plus a CLS token.
+- **Embedding recipe** (ADR-020): from each of the last four transformer blocks we take the CLS
+  token, apply the model's final layer norm, L2-normalise it, and concatenate the four (1,536-d).
+  This is repeated for the image rotated by 0°, 90°, 180° and 270°; the four vectors are averaged
+  and L2-normalised, so inner product = cosine similarity. The recipe was chosen by the
+  experiments in §7.1.
 - **Why frozen features work.** DINOv2 is trained with self-supervised objectives
   (self-distillation plus masked-patch objectives) that produce general-purpose features. Its
   authors evaluate those features with linear probes and k-nearest-neighbour retrieval, which is
@@ -172,7 +179,8 @@ One embedding is reused **three ways**:
 - the unknown detector measures its distance to the reference library.
 
 Because all three share it, we track an **embedding fingerprint**
-(`DINOv2 ViT-S/14@ed25f3a31f01|preprocess-v1|dim=384`) inside every saved artifact. If anyone
+(`DINOv2 ViT-S/14@ed25f3a31f01|preprocess-v1|size=448|pool=cls_last4|views=4|dim=1536`) inside
+every saved artifact. If anyone
 swaps the model or changes preprocessing without rebuilding, the API refuses to mix incompatible
 pieces (ADR-006).
 
@@ -185,8 +193,9 @@ probability.
 strength `C` is selected from {0.01 … 10,000} by **validation log-loss**. Log-loss is a proper
 scoring rule, so it rewards honest probabilities, not just correct labels. The winner was C = 100,
 an interior optimum. We widened the grid once, when the best value sat on its edge. The model is
-fitted on the training split only, which keeps the validation split clean for calibration.
-Validation accuracy: 91.9%.
+fitted on the training split only, which keeps the validation split clean for calibration. Each of
+the four rotations of a training image is a separate training row (1,364 rows from 341 images), a
+free, label-preserving augmentation. Validation accuracy: 93.2%.
 
 ### 5.4 Reference retrieval (the "show me similar examples" part)
 **Plain language.** From the training images we picked **20 representative reference images per
@@ -213,16 +222,18 @@ many outsiders as possible while still accepting at least 95% of genuine samples
 **Technical.**
 - `distance = 1 − mean cosine similarity to the 5 nearest references`.
 - **Threshold selection**: minimise OOD false acceptance subject to known acceptance ≥ 95%. The
-  smallest feasible threshold is the *known boundary* (0.431). The false-acceptance rate stays
+  smallest feasible threshold is the *known boundary* (0.115). The false-acceptance rate stays
   constant up to the next OOD distance, so we take the midpoint of that interval to maximise the
-  margin: **0.560**.
-- **Status**: distance > 0.560 → UNKNOWN; > 0.431 → UNCERTAIN; else KNOWN.
+  margin: **0.188**.
+- **Status**: distance > 0.188 → UNKNOWN; > 0.115 → UNCERTAIN; else KNOWN.
 - **Risk**: a 1-D logistic model P(OOD | distance), fitted with balanced classes on a
   standardised feature and mapped back to raw units.
 - **Calibration data**: Mikrobat validation (74) plus DIMPSAR calibration classes (200).
   Evaluation uses a *different* set of DIMPSAR classes (200), so the result is not measured on
   data it was tuned on.
-- Measured separation: genuine validation distances max 0.535; DIMPSAR min 0.689.
+- Measured separation: genuine validation distances max 0.146; DIMPSAR calibration min 0.260.
+  (The absolute values are smaller than in release v1 because the richer embedding places all
+  micrographs closer together; the thresholds are recalibrated with every release.)
 
 ### 5.6 Image quality
 **Plain language.** Blurry, too-dark or empty images get flagged. Quality can only turn a
@@ -258,13 +269,13 @@ decide.
 3. Otherwise, the answer is Review required, and the reason lists exactly which conditions failed.
 
 **Technical.** `ml/decision/decision_engine.py`. The policy file
-`models/configs/decision-v1.json` is calibrated on validation data:
+`models/configs/decision-v2.json` is calibrated on validation data:
 
 | Value | How it was derived | Result |
 |---|---|---|
-| `min_classifier_confidence` | smallest confidence with ≥ 95% selective accuracy on validation | 0.817 (achieved 95.3%, 86.5% coverage) |
-| `min_reference_similarity` | keeps 95% of correctly classified validation samples | 0.646 |
-| `max_unknown_risk` | unknown risk at the known boundary | 0.106 |
+| `min_classifier_confidence` | smallest confidence with ≥ 95% selective accuracy on validation | 0.687 (achieved 95.8%, 95.9% coverage) |
+| `min_reference_similarity` | keeps 95% of correctly classified validation samples | 0.898 |
+| `max_unknown_risk` | unknown risk at the known boundary | 0.038 |
 
 No model, language model or UI can override the result. The API also returns every criterion with
 its observed and required values, and the UI shows them as a table.
@@ -357,29 +368,58 @@ Measured on data never used for training or calibration
 
 | Set | Result |
 |---|---|
-| **Test** (72, fragment types in the library) | Accuracy 88.9%. **24 preliminary passes, all correct.** All 8 misclassified images were stopped (routed to review). |
+| **Test** (72, fragment types in the library) | **Accuracy 95.8%** (69/72). 16 preliminary passes, 15 correct. 2 of 3 misclassified images were stopped (routed to review). |
 | **DIMPSAR evaluation** (200 field photos, unseen classes) | **200/200 Unknown**, 0 false passes |
-| **Held-out known material** (104, unseen fragment types) | Accuracy 49.0%; 52 passes with 40.4% precision |
-| **Ambiguity probe** (53) | 22 pass, 29 review, 2 unknown |
+| **Held-out known material** (104, unseen fragment types) | Accuracy 55.8%; 17 passes with 41.2% precision |
+| **Ambiguity probe** (53) | 15 pass, 38 review, 0 unknown |
 
 **Ablation — does each layer earn its place?**
 
 | System | Test: wrong plant accepted | Field photos accepted as microscopy |
 |---|---|---|
-| A. Classifier only | 8 | 100% |
-| B. + reference agreement | 5 | 48% |
-| C. + unknown detection | 5 | 0% |
-| D. Full evidence + decision | **0** | **0%** |
+| A. Classifier only | 3 | 100% |
+| B. + reference agreement | 2 | 50.5% |
+| C. + unknown detection | 2 | 0% |
+| D. Full evidence + decision | **1** | **0%** |
 
 **The honest key finding.** On fragment types that are *not* in the reference library, the system
-can pass the wrong plant. Held-out sirih_merah xylem was predicted as sirih for 49 of 53 images,
-and its nearest references are sirih trichome, lower-epidermis and sclerenchyma micrographs
-(measured top-1: 17, 15 and 12 of 53). The classifier and the references share one
-representation, so they fail together.
+can pass the wrong plant. Held-out sirih_merah xylem was predicted as sirih for 46 of 53 images.
+The classifier and the references share one representation, so they fail together.
 We did **not** tune thresholds on the evaluation data to hide this. The conclusion, shown in every
 result's limitations, is that **screening conclusions only transfer to fragment types represented
 in the reference library.** This tells a real deployment exactly what to fix: expand the library
 to cover every structure that will be screened.
+
+### 7.1 How we improved accuracy from 88.9% to 95.8%
+
+**Plain language.** The first release was right on 88.9% of test images. To improve it without
+fooling ourselves, we wrote each idea down *before* trying it, together with the rule that would
+decide whether to keep it. The rule never looks at the test images: those are too few (one image is
+1.4 percentage points) and would let us pick whatever happened to suit them. Instead, each idea is
+scored by *cross-validation*: the 415 training and validation images are split five ways, and
+every image is predicted by a model that never saw it or its near-duplicates. An idea is kept only
+if that score goes up and the analysis still takes under 3 seconds.
+
+What worked: showing the model every rotation of each training image, feeding it the image at a
+higher resolution, and reading several of its internal layers instead of only the last one. What
+did not: a bigger DINOv2 model (lower score and slower), and one idea that raised test accuracy
+but not the cross-validation score, which we therefore did not keep.
+
+**Technical.** ADR-022 and the generated log
+[`reports/model_improvement_experiments-v2.md`](reports/model_improvement_experiments-v2.md).
+
+| Release | Recipe | Grouped 5-fold CV accuracy | Test accuracy |
+|---|---|---|---|
+| v1 | 224 px, final-block CLS, 1 view | — | 88.9% (64/72) |
+| v2 | 448 px, last-4-block CLS, 4 rotations, trained on every view | 90.6% | **95.8% (69/72)** |
+
+**The trade-off we report instead of hiding.** The richer embedding improved the classifier but not
+the reference retrieval over the 40-image library: test top-1 reference class accuracy fell from
+88.9% to 76.4%, and HIGH agreement (all five references the predicted plant) from 33.3% to 22.2%.
+Because PRELIMINARY_PASS requires HIGH agreement, passes became rarer. Across test and held-out
+material, wrong-class passes fell from 31 to 11, while correct passes fell from 45 to 22. On
+test, one wrong pass now occurs (15 of 16 correct, against 24 of 24 before). We did not re-tune the
+thresholds on test data to restore the old numbers.
 
 ---
 
@@ -433,10 +473,11 @@ research script. Its constructor takes its components (dependency injection), so
 real logic with a small fake encoder.
 
 ### 8.3 Artifacts are replaceable and self-checking
-- Every artifact records the embedding fingerprint and versions: `classifier-v1`, `index-v1`,
-  `unknown-v1`, `quality-v1`, `decision-v1`, `preprocess-v1`.
-- On startup the pipeline checks the fingerprints match and that the calibration was fitted on
-  the loaded index. If not, it refuses (`ArtifactMismatchError`).
+- Every artifact records the embedding fingerprint and versions: `encoder-v2`, `classifier-v2`,
+  `index-v2`, `unknown-v2`, `quality-v1`, `decision-v2`, `preprocess-v1`.
+- `models/manifest.json` lists every artifact of the release with its SHA-256 (ADR-021).
+- On startup the pipeline checks the hashes, that the fingerprints match and that the calibration
+  was fitted on the loaded index. If not, it refuses (`ArtifactMismatchError`).
 - Swap in retrained artifacts, restart the API, and the UI works unchanged. The frontend never
   touches model files.
 
@@ -459,8 +500,8 @@ stays browsable. The system never shows a fake or placeholder prediction.
 | Layer | Choice | Why this | Why not the alternatives |
 |---|---|---|---|
 | Language (ML/API) | **Python 3.12** | The whole ML ecosystem (PyTorch, scikit-learn, FAISS) is Python-native | Node.js would need a second Python ML service anyway |
-| Vision encoder | **DINOv2 ViT-S/14** (frozen) via **transformers** + **PyTorch** (CPU) | Strong general features for linear probes and nearest-neighbour search; small enough for CPU; pinned and offline | CNN from scratch: needs far more data; fine-tuning: overfits 341 images and destabilises the shared embedding space; ViT-B/14: slower with no evidence it is needed; Cloud Vision: generic labels, online, no reference library |
-| Classifier | **scikit-learn LogisticRegression** | 385 parameters, trains in under a second, calibrated probabilities, trivially serialised (joblib) | Random forest/XGBoost: extra tuning for no gain on dense embeddings; an MLP head is another training loop |
+| Vision encoder | **DINOv2 ViT-S/14** (frozen) via **transformers** + **PyTorch** (CPU) | Strong general features for linear probes and nearest-neighbour search; small enough for CPU; pinned and offline | CNN from scratch: needs far more data; fine-tuning: overfits 341 images and destabilises the shared embedding space; ViT-B/14: tested, lower cross-validated accuracy and slower; Cloud Vision: generic labels, online, no reference library |
+| Classifier | **scikit-learn LogisticRegression** | 1,537 parameters, trains in seconds, calibrated probabilities, trivially serialised (joblib) | Random forest/XGBoost: extra tuning for no gain on dense embeddings; an MLP head is another training loop |
 | Vector search | **FAISS IndexFlatIP** | Exact, deterministic cosine search; purpose-built; local | NumPy brute force works but FAISS scales without rewriting; pgvector needs a database server |
 | Image processing | **Pillow + OpenCV (headless)** | Robust decoding and validation (Pillow); fast Laplacian/DCT (OpenCV); the headless build has no GUI dependencies | — |
 | Data prep | **pandas + pyarrow** | DIMPSAR ships as parquet; tabular split files and reports | — |
@@ -494,7 +535,7 @@ stays browsable. The system never shows a fake or placeholder prediction.
    failure is reported in the UI and docs instead of tuned away.
 6. **An ambiguity probe.** Byte-identical images labelled as two species are kept as their own
    evaluation set, showing what the pipeline can and cannot detect.
-7. **An ablation that proves each layer adds value** (classifier only → full system: 8 → 0 wrong
+7. **An ablation that proves each layer adds value** (classifier only → full system: 3 → 1 wrong
    passes on test, 100% → 0% false acceptance of field photos).
 8. **One pipeline for serving and evaluation**, so reported metrics are the app's real behaviour.
 9. **Embedding fingerprints and version cross-checks**, so incompatible artifacts can never be
@@ -506,6 +547,8 @@ stays browsable. The system never shows a fake or placeholder prediction.
 13. **Reproducible by construction**: pinned sources with checksums, seeded splits, a
     one-command pipeline, and generated reports committed while regenerable data stays out of git.
 14. **Offline-first down to the fonts.**
+15. **Pre-registered model improvement.** Every accuracy idea is committed with its adoption rule
+    before it runs and is judged by grouped cross-validation, never by the small test set (§7.1).
 
 ---
 
@@ -525,13 +568,13 @@ stays browsable. The system never shows a fake or placeholder prediction.
 
 | Layer | What is tested |
 |---|---|
-| ML units (pytest) | Decoding (formats, empty, corrupt, truncated, EXIF), transforms (no crop, colour invariance), quality checks, classifier outputs and persistence, FAISS search and voting, threshold selection and risk model, evidence agreement and strength, every decision rule, dataset parsing and hashing |
+| ML units (pytest) | Decoding (formats, empty, corrupt, truncated, EXIF), transforms (no crop, colour invariance), quality checks, classifier outputs and persistence, FAISS search and voting, threshold selection and risk model, evidence agreement and strength, every decision rule, dataset parsing and hashing, embedding pooling and settings, release manifest verification, experiment ladders (valid, chained phase to phase), the adoption rule and grouped cross-validation |
 | Pipeline | A synthetic two-class pipeline built with the *real* training and calibration functions and a deterministic fake encoder: known image → pass, unrelated image → unknown, batch = single, artifact mismatches rejected |
 | API | Full schema, persistence and listing, reference images, invalid uploads (415/413/422), malformed ids, degraded mode, CORS |
 | Real-artifact integration | The real DINOv2 pipeline and API on real test and DIMPSAR images (runs when artifacts exist) |
 | Frontend (Vitest) | Upload validation and keyboard access, loading/progress, success navigation, API errors, degraded API, full result rendering from **real captured API responses**, not-found and retry, history empty/list/error, API client errors |
 
-Totals: 82 Python tests, 21 frontend tests, plus lint, type checking and a production build.
+Totals: 108 Python tests, 21 frontend tests, plus lint, type checking and a production build.
 
 ---
 
@@ -561,7 +604,8 @@ Totals: 82 Python tests, 21 frontend tests, plus lint, type checking and a produ
 
 | Term | Plain meaning |
 |---|---|
-| **Embedding** | A list of numbers (384 here) that describes what an image looks like; similar images → similar numbers |
+| **Embedding** | A list of numbers (1,536 here) that describes what an image looks like; similar images → similar numbers |
+| **Cross-validation** | Splitting the development images into parts and predicting each part with a model trained on the others, so every image is scored by a model that never saw it |
 | **Frozen model** | A pretrained model used as-is, never retrained |
 | **Cosine similarity** | How closely two embeddings point in the same direction (1 = identical direction) |
 | **FAISS** | A library for fast "find the most similar vectors" search |

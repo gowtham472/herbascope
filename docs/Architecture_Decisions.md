@@ -27,6 +27,7 @@ those reports.
 | [019](#adr-019-docker) | Docker mounts artifacts; CPU torch; standalone Next |
 | [020](#adr-020-configurable-embedding-recipe) | Configurable embedding recipe: backbone, resolution, pooling, dihedral views |
 | [021](#adr-021-model-release-manifest) | Hash-verified model release manifest |
+| [022](#adr-022-pre-registered-model-improvement-protocol) | Pre-registered improvement ladders selected by grouped cross-validation |
 
 ---
 
@@ -122,14 +123,15 @@ measure whether genuine material of a known species that the library does not re
 wrongly rejected or wrongly accepted. The rule is deterministic rather than hand-picked. The
 remaining groups are split 70/15/15, stratified by class × fragment type.
 
-**Consequence (reported, not tuned away).** Held-out classification accuracy is 49.0% against
-88.9% on test. Species and fragment type are confounded in Mikrobat: after curation the two
+**Consequence (reported, not tuned away).** Held-out classification accuracy is 55.8% against
+95.8% on test. Species and fragment type are confounded in Mikrobat: after curation the two
 classes share no fragment-type label. See the evaluation findings.
 
 ## ADR-005: Preprocessing
 
-**Decision.** Convert to grayscale, pad to square with the mean intensity, bicubic resize to 224,
-then ImageNet normalisation, versioned as `preprocess-v1`. EXIF orientation is applied on decode.
+**Decision.** Convert to grayscale, pad to square with the mean intensity, bicubic resize to the
+encoder input size (448 px in the current release, see ADR-020), then ImageNet normalisation,
+versioned as `preprocess-v1`. EXIF orientation is applied on decode.
 
 **Why.**
 - *Grayscale*: all 716 Mikrobat files store identical R/G/B channels (measured). Colour carries no
@@ -145,17 +147,18 @@ then ImageNet normalisation, versioned as `preprocess-v1`. EXIF orientation is a
 ## ADR-006: Frozen DINOv2 encoder
 
 **Decision.** DINOv2 ViT-S/14 (`facebook/dinov2-small`, pinned revision) via `transformers`,
-frozen and in inference mode. The embedding is the layer-normalised CLS token, L2-normalised
-(384-d). Weights are saved to `models/pretrained/dinov2_vits14/` with a `SOURCE.json` receipt and
-always loaded with `local_files_only=True`.
+frozen and in inference mode. How the embedding is read from it (resolution, pooling, views) is
+the configurable recipe of ADR-020. Weights are saved to `models/pretrained/dinov2_vits14/` with a
+`SOURCE.json` receipt and always loaded with `local_files_only=True`.
 
 **Why.** DINOv2 features work directly with linear classifiers and nearest-neighbour retrieval.
-ViT-S keeps CPU inference practical (about 12 images/s batched on the development laptop). Local,
-pinned weights make the demo work offline. Because the weights directory describes itself, the
-API does not need the training config.
+ViT-S keeps CPU inference practical: the current recipe encodes one image in about 1.5 s on the
+development laptop, and the larger ViT-B/14 lowered cross-validated accuracy when tested (ADR-022).
+Local, pinned weights make the demo work offline. Because the weights directory describes itself,
+the API does not need the training config.
 
-**Embedding fingerprint.** `encoder@revision|preprocessing-version|dim` is written into every
-artifact. `ScreeningPipeline` refuses to run when the classifier, index and calibration
+**Embedding fingerprint.** `encoder@revision|preprocessing-version|size|pooling|views|dim` is
+written into every artifact. `ScreeningPipeline` refuses to run when the classifier, index and calibration
 fingerprints differ.
 
 ## ADR-007: Logistic-regression classifier
@@ -206,7 +209,8 @@ cross-platform builds.
 **Why.** The mean over k neighbours measures density in reference space, while the single best
 match stays in the retrieval evidence. The objective encodes the spec's priority (no false
 acceptance) as an explicit constraint rather than a guessed number. Calibrated values: threshold
-0.560, boundary 0.431. Known validation distances top out at 0.535; DIMPSAR starts at 0.689.
+0.188, boundary 0.115. Known validation distances top out at 0.146; DIMPSAR calibration distances
+start at 0.260.
 
 **Limitation (verbatim in every result).** Because Mikrobat contains only two species, true
 held-out-species OOD calibration was not possible. See `models/classifiers/calibration.json`.
@@ -249,8 +253,9 @@ Calibrated on validation (`models/configs/<decision version>.json`):
 - `max_unknown_risk`: the risk at the known boundary.
 
 **Why.** Rules are reproducible, auditable and unit-tested, and each result shows every criterion
-with observed and required values. On the test split all 24 PASS decisions were correct and all 8
-misclassifications were stopped.
+with observed and required values. On the test split 15 of 16 PASS decisions were correct and 2 of
+3 misclassifications were stopped (release v1: 24 of 24 and 8 of 8; the trade-off is analysed in
+ADR-022).
 
 ## ADR-014: One screening pipeline for API, evaluation and smoke test
 
@@ -332,9 +337,10 @@ multi-GB CUDA layers. `NEXT_PUBLIC_*` values are inlined at build time.
 
 **Decision.** The embedding is defined by a recipe in `ml/configs/pipeline.json` (`encoder`):
 the pinned DINOv2 backbone, the input resolution (any multiple of the 14 px patch), the pooling
-(`cls`, or `cls_patchmean`: CLS token concatenated with the mean patch token, each
-L2-normalised), and the number of dihedral views (rotations and reflections of the square)
-averaged at inference. `classifier.train_on_views` optionally trains on every view as an
+(`cls`; `cls_patchmean`, the CLS token concatenated with the mean patch token; or `cls_last4`,
+the layer-normalised CLS tokens of the last four transformer blocks; parts are L2-normalised
+before concatenation), and the number of dihedral views (rotations and reflections of the square)
+averaged at inference. The current release uses 448 px, `cls_last4` and four rotations. `classifier.train_on_views` optionally trains on every view as an
 augmented row. `extract_embeddings` writes the recipe as an encoder settings artifact, and the
 fingerprint includes every recipe field.
 
@@ -342,8 +348,9 @@ fingerprint includes every recipe field.
 - A micrograph has no canonical orientation, so all eight dihedral views are equally valid
   observations of the same specimen. That makes them free, label-preserving augmentation and
   test-time averaging.
-- Patch tokens keep local texture detail that the CLS token summarises away.
-- Higher resolution avoids downsampling the 300 px micrographs below their recorded detail.
+- Patch tokens and earlier blocks keep local and mid-level detail that the final CLS token
+  summarises away.
+- Higher resolution gives small structures (stomata, crystals) more patches.
 
 Making these choices configuration lets the model-improvement experiments and the production
 pipeline share one implementation, so an improvement measured in an experiment is the one that
@@ -364,3 +371,47 @@ the smoke test locate artifacts only through the manifest, and loading re-verifi
 
 `REFERENCE_INDEX` and `REFERENCE_METADATA` are no longer environment variables: pointing the API
 at individual files could combine artifacts from different releases.
+
+## ADR-022: Pre-registered model-improvement protocol
+
+**Decision.** A change to the embedding recipe reaches `pipeline.json` only through an experiment
+ladder (`ml/configs/experiments-v*.json`) that is committed before it runs. The ladder states a
+hypothesis per rung, the primary metric, the adoption rule and a latency budget.
+- *Primary metric*: out-of-fold accuracy from `StratifiedGroupKFold` (5 folds) over train +
+  validation (415 images), grouped by near-duplicate group (ADR-003), reported at the C with the
+  lowest out-of-fold log-loss. C is not nested inside the folds, so the estimate is slightly
+  optimistic, equally for every rung.
+- *Adoption*: rungs run in order, each on top of the best configuration so far. A rung is adopted
+  if it encodes an image within 3 s and raises out-of-fold accuracy, or ties with lower log-loss.
+- *Reporting*: validation, test and held-out results are reported for every rung and never decide
+  adoption. A later phase designed after seeing results is a new ladder, and its objective says so.
+- *Promotion*: the selection is copied into `pipeline.json` with bumped artifact versions and the
+  full pipeline is rebuilt and evaluated.
+
+**Why.**
+- *The test set is too small to select on.* One test image is 1.39 percentage points. Choosing
+  among many candidates by test accuracy would fit the test set. Cross-validation scores 415
+  images, and grouping keeps near-duplicates out of the fold that evaluates them.
+- *Registration prevents moving the goalposts.* The hypothesis, metric and rule exist in git before
+  the numbers do, so a judge can check that the rule, not the result, chose the model.
+- *The discipline had real cost.* In phase 1, patch-token pooling raised test accuracy but not
+  cross-validated accuracy, so it was not adopted. The latency budget encodes the interactive-use
+  requirement, so a slower, more accurate encoder cannot win by default.
+- *One implementation.* Experiments pool cached token features with the production functions, so
+  the measured embedding is the one that ships (ADR-020).
+
+**Results.** Generated logs: [`reports/model_improvement_experiments-v2.md`](reports/model_improvement_experiments-v2.md).
+Release v2 (448 px, `cls_last4`, four rotations, trained on every view) reached 90.6%
+cross-validated accuracy and 95.8% test accuracy (release v1: 88.9%).
+
+**Trade-off (reported, not tuned away).** The decision layer did not improve with the classifier.
+Test top-1 reference class accuracy fell from 88.9% to 76.4% and HIGH agreement from 33.3% to
+22.2% of test samples. PRELIMINARY_PASS therefore became rarer. Across test and held-out
+material, correct passes fell from 45 to 22 and wrong-class passes from 31 to 11. On test, 15 of 16
+passes are correct, against 24 of 24 in release v1. The decision thresholds were not re-tuned on
+test data to restore the old count, because that would break the calibration contract (ADR-013).
+
+**Rejected.** *Selecting on test or held-out accuracy*: too few images, and it leaks the
+evaluation into the model. *Fine-tuning DINOv2*: 341 training images, and it would move the
+shared embedding space (ADR-006). *Adopting rungs over the latency budget*: they are reported as
+accuracy references only.
