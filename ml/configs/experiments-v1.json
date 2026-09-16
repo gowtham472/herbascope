@@ -8,6 +8,7 @@
   "latency_rationale": "Interactive screening: encoding one uploaded image (all views) must take at most 3 s on the reference laptop CPU (AMD Ryzen 7 7735HS).",
   "cv_folds": 5,
   "feature_views": 8,
+  "batch_size": 8,
   "backbones": {
     "vits14": {
       "name": "DINOv2 ViT-S/14",

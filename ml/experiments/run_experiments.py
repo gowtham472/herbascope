@@ -78,6 +78,9 @@ class ExperimentsConfig(_Strict):
     latency_rationale: str
     cv_folds: int = Field(ge=2)
     feature_views: int = Field(ge=1, le=8)
+    # Encoding batch size for this ladder. A machine knob, not a modelling choice: it changes
+    # peak memory, not the embeddings. Defaults to the production pipeline's batch size.
+    batch_size: int | None = Field(default=None, gt=0)
     backbones: dict[str, Backbone]
     baseline: Baseline
     ladder: list[Rung]
@@ -115,11 +118,9 @@ def load_experiments_config(path: Path) -> ExperimentsConfig:
 
 @lru_cache(maxsize=16)
 def _features(
-    backbone: Backbone, input_size: int, split: str, views: int, need_layers: bool
+    backbone: Backbone, input_size: int, split: str, views: int, batch_size: int, need_layers: bool
 ) -> TokenFeatures:
-    return load_features(
-        backbone, input_size, split, views, load_pipeline_config().encoder.batch_size, need_layers
-    )
+    return load_features(backbone, input_size, split, views, batch_size, need_layers)
 
 
 @dataclass(frozen=True)
@@ -195,6 +196,7 @@ def evaluate_candidate(
             candidate.input_size,
             split,
             experiments.feature_views,
+            experiments.batch_size or pipeline.encoder.batch_size,
             need_layers=candidate.pooling in BLOCK_POOLINGS,
         )
         for split in SPLITS
