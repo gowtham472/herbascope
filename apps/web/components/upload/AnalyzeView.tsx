@@ -110,7 +110,7 @@ export function AnalyzeView() {
               type="button"
               onClick={submit}
               disabled={submitting}
-              className="press inline-flex w-full items-center justify-center gap-2 rounded-lg bg-brand-600 px-4 py-2.5 font-medium text-white shadow-sm hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600"
+              className="press inline-flex w-full items-center justify-center gap-2 rounded-full bg-brand-500 px-4 py-2.5 font-semibold text-ink-900 shadow-sm hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600"
             >
               <MicroscopeIcon aria-hidden="true" weight="bold" className="size-5" />
               {submitting ? "Analyzing…" : "Run screening"}

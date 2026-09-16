@@ -15,23 +15,28 @@ const OUTCOME_TEXT = {
 export function DecisionCard({ decision }: { decision: Decision }) {
   const tone = DECISION_TONE[decision.status];
   return (
-    <section aria-labelledby="decision-heading" className={`rounded-xl border p-5 shadow-sm break-inside-avoid ${TONE_CLASSES[tone].panel}`}>
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 id="decision-heading" className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-muted">
-          <GavelIcon aria-hidden="true" weight="duotone" className="size-5" />
-          {LABELS.decision}
-        </h2>
-        <span className="font-mono text-xs text-muted">policy {decision.policy_version}</span>
-      </div>
-      <div className="mt-3">
-        <StatusBadge tone={tone} label={DECISION_LABEL[decision.status]} size="lg" />
-      </div>
-      <p className={`mt-3 text-lg font-medium ${TONE_CLASSES[tone].text}`}>{OUTCOME_TEXT[decision.status]}</p>
+    <section
+      aria-labelledby="decision-heading"
+      className={`overflow-hidden rounded-2xl border break-inside-avoid ${TONE_CLASSES[tone].panel}`}
+    >
+      <div className={`h-1.5 w-full ${TONE_CLASSES[tone].bar}`} aria-hidden="true" />
+      <div className="p-5 sm:p-6">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 id="decision-heading" className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-muted">
+            <GavelIcon aria-hidden="true" weight="duotone" className="size-5" />
+            {LABELS.decision}
+          </h2>
+          <span className="font-mono text-xs text-muted">policy {decision.policy_version}</span>
+        </div>
+        <div className="mt-4">
+          <StatusBadge tone={tone} label={DECISION_LABEL[decision.status]} size="lg" />
+        </div>
+        <p className={`mt-4 text-lg font-semibold leading-relaxed ${TONE_CLASSES[tone].text}`}>{OUTCOME_TEXT[decision.status]}</p>
 
-      <h3 className="mt-4 text-xs font-semibold uppercase tracking-wide text-muted">Decision reason</h3>
-      <p className="mt-1 text-sm text-ink">{decision.reason}</p>
+        <h3 className="mt-5 text-xs font-semibold uppercase tracking-[0.18em] text-muted">Decision reason</h3>
+        <p className="mt-1.5 text-sm leading-relaxed text-ink">{decision.reason}</p>
 
-      <div className="mt-4 overflow-x-auto rounded-lg border border-line bg-surface">
+        <div className="mt-5 overflow-x-auto rounded-xl border border-line bg-surface">
         <table className="w-full text-sm">
           <caption className="sr-only">Preliminary-pass criteria</caption>
           <thead className="bg-canvas text-left text-xs text-muted">
@@ -61,15 +66,16 @@ export function DecisionCard({ decision }: { decision: Decision }) {
                 </td>
               </tr>
             ))}
-          </tbody>
-        </table>
+            </tbody>
+          </table>
+        </div>
+        {decision.status === "UNKNOWN" ? (
+          <p className="mt-3 text-xs text-muted">
+            UNKNOWN takes precedence: once the sample is outside the reference distribution the criteria above are
+            shown for transparency only.
+          </p>
+        ) : null}
       </div>
-      {decision.status === "UNKNOWN" ? (
-        <p className="mt-2 text-xs text-muted">
-          UNKNOWN takes precedence: once the sample is outside the reference distribution the criteria above are
-          shown for transparency only.
-        </p>
-      ) : null}
     </section>
   );
 }

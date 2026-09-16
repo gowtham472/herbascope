@@ -293,17 +293,30 @@ components.
 - *Pages*: `/`, `/analyze`, `/results/[id]` (async `params`, as required in v16) and `/history`.
 - *Data*: fetched client-side through `lib/api.ts` and `hooks/useApiResource.ts`, with explicit
   loading, error and retry states.
-- *Fonts*: Geist bundled from the `geist` npm package, not `next/font/google`.
+- *Fonts*: Plus Jakarta Sans for text and Geist Mono for measured numbers, both bundled from npm
+  packages (`@fontsource-variable/plus-jakarta-sans`, `geist`), never `next/font/google`.
 - *Images*: API images use `next/image` with `unoptimized`.
 - *Reference comparison*: selecting a retrieved reference opens it beside the uploaded sample in
   a native `<dialog>`, which brings the focus trap, backdrop and Escape handling with no
   dependency. Retrieval evidence is only useful if a reviewer can look at it closely.
+- *Marketing page*: an ordinary vertical page. Two sections move sideways: the pipeline stages,
+  pinned while vertical scroll drives horizontal travel, and the report panels, a snap rail with
+  arrow controls. Both degrade to a plain scrollable rail without JavaScript, below `lg`, or
+  under reduced motion (ADR-023).
 
 **Why.** The browser is the only API consumer, so there is one `NEXT_PUBLIC_API_BASE_URL` and no
 server-to-server URL to keep in sync. Bundled fonts keep dev and build working offline, a spec
 requirement. Next 16's image optimiser blocks local IP addresses (an SSRF guard), and the
 micrographs are already small. The upload limit is read from `/health`, so it is not duplicated in
 the client. Every result section shows the underlying numbers, thresholds and reference images.
+
+**Brand.** The palette is derived from the supplied logo: the bright leaf `#ACEE27` is the single
+accent, the soft leaf `#C2E698` supports it, and a deep ink scale carries surfaces and type.
+Colour is flat everywhere; the only gradients in the product are inside the logo artwork itself,
+which is used as supplied (`public/brand/wordmark.svg`, and `mark.svg` lifted from it). The
+mascot ships as two pre-sized WebP files rather than the 2 MB original. Primary actions are the
+lime fill with near-black text, which passes contrast comfortably where lime with white text
+would not.
 
 ## ADR-017: No LLM
 
@@ -472,6 +485,14 @@ marker popping in at its measured position; the decision badge settling in; pres
 buttons and the upload target; hover lift and image zoom on reference cards; an indeterminate
 sweep on the analysis progress panel; a shimmer for loading placeholders; a short route
 transition.
+
+**Scroll-linked horizontal sections.** The marketing pipeline section is taller than the viewport,
+sticks, and maps vertical scroll progress to horizontal travel of the stage cards. It is the one
+place with a scroll listener, and it follows the same rule: the un-enhanced markup is a plain
+horizontally scrollable rail with snap points, so without JavaScript, below `lg`, or under reduced
+motion the cards are all still there and reachable. The transform is applied directly on mount,
+resize and `visibilitychange` as well as from the animation frame, because frames do not run while
+a tab is hidden.
 
 **Rejected.** *`motion` / Framer Motion* (installed, measured, removed): it hides content and
 values behind animation frames, and adds about 30 kB for transitions CSS already does.

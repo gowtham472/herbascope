@@ -1,0 +1,14 @@
+<svg width="166" height="162" viewBox="250 -6 166 162" fill="none" xmlns="http://www.w3.org/2000/svg">
+<path d="M262.434 0.0690649C225.787 82.1415 274.107 132.608 302.847 147.582C315.667 115.475 325.532 41.0237 262.434 0.0690649Z" fill="url(#mark_leaf_left)"/>
+<path d="M400.841 19.2491C410.524 108.609 349.046 141.805 317.096 147.233C314.751 112.742 328.218 38.8566 400.841 19.2491Z" fill="url(#mark_leaf_right)"/>
+<defs>
+<linearGradient id="mark_leaf_left" x1="310.707" y1="33.8977" x2="254.224" y2="114.252" gradientUnits="userSpaceOnUse">
+<stop stop-color="#C2E698"/>
+<stop offset="1" stop-color="#ACEE27"/>
+</linearGradient>
+<linearGradient id="mark_leaf_right" x1="344.515" y1="36.6257" x2="373.603" y2="130.439" gradientUnits="userSpaceOnUse">
+<stop stop-color="#C2E698"/>
+<stop offset="1" stop-color="#ACEE27"/>
+</linearGradient>
+</defs>
+</svg>

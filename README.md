@@ -104,9 +104,10 @@ the library does not contain.
 ## Repository layout
 
 ```text
-apps/web/                 Next.js 16 frontend (App Router, TypeScript, Tailwind v4, Phosphor)
+apps/web/                 Next.js 16 frontend (App Router, TypeScript, Tailwind v4, Phosphor, Plus Jakarta Sans)
   app/                    /, /analyze, /results/[id], /history
-  components/             upload/, analysis/, report/, history/, common/, motion/
+  components/             upload/, analysis/, report/, history/, common/, marketing/, motion/
+  public/brand/           supplied logo artwork and mascot (wordmark.svg, mark.svg, mascot*.webp)
   lib/api.ts              typed API client          types/index.ts   API contract types
   __tests__/              Vitest + Testing Library tests (fixtures captured from the real API)
 services/api/app/         FastAPI service

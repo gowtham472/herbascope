@@ -16,15 +16,15 @@ export function Panel({ title, icon: IconComponent, description, aside, children
   return (
     <section
       aria-labelledby={headingId}
-      className={`rounded-xl border border-line bg-surface p-5 shadow-sm break-inside-avoid ${className}`}
+      className={`rounded-2xl border border-line bg-surface p-5 break-inside-avoid ${className}`}
     >
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex items-start gap-3">
-          <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-brand-50 text-brand-700">
+          <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-ink-900 text-brand-500">
             <IconComponent weight="duotone" aria-hidden="true" className="size-5" />
           </span>
           <div>
-            <h2 id={headingId} className="text-base font-semibold text-ink">
+            <h2 id={headingId} className="text-base font-bold text-ink">
               {title}
             </h2>
             {description ? <p className="mt-0.5 text-sm text-muted">{description}</p> : null}

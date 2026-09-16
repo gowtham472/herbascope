@@ -516,7 +516,8 @@ stays browsable. The system never shows a fake or placeholder prediction.
 | Styling | **Tailwind CSS v4** | Design tokens in CSS (`@theme`), consistent spacing and colour, no CSS-in-JS runtime | - |
 | Motion | **CSS only** (tokens, utilities and keyframes in `app/globals.css`) | Every animation ends at the element's base state, so a paused or disabled animation still shows the real value; no bundle cost; only `transform` and `opacity` animate | An animation library (`motion`) was installed and removed: it left "0.0%" on screen when the animation frame did not run (ADR-023) |
 | Icons | **Phosphor Icons** (one family, `/ssr` entry) | Consistent technical look; the SSR entry works in both server and client components | Mixing icon libraries or emoji was prohibited by the spec |
-| Fonts | **Geist** (bundled npm package) | Offline builds and demos | `next/font/google` downloads fonts at build time |
+| Fonts | **Plus Jakarta Sans** for text, **Geist Mono** for measured numbers (both bundled npm packages) | Offline builds and demos; a monospace with tabular figures keeps thresholds and values aligned in tables and gauges | `next/font/google` downloads fonts at build time |
+| Brand | Supplied logo artwork used as-is; palette derived from its leaf colours (`#ACEE27`, `#C2E698`) plus a deep ink scale; mascot shipped as pre-sized WebP | One accent colour keeps status colours meaningful; flat fills everywhere except inside the logo itself | A second accent hue would compete with the pass/review/unknown colours |
 | Python quality | **pytest + ruff** | Fast tests and a single fast linter/formatter | - |
 | Web quality | **Vitest + Testing Library + ESLint** | Next.js-documented setup; tests exercise what the user sees (roles, labels) | - |
 | Packaging | **pnpm**, **pip requirements (pinned)** | Reproducible installs | - |

@@ -1,38 +1,56 @@
 @import "tailwindcss";
 
-/* HerbaScope X design tokens. Status colours always travel with an icon and a text label,
-   so colour is never the only carrier of meaning. */
+/* HerbaScope X design tokens.
+   The palette is taken from the logo: the bright leaf (#ACEE27) is the single accent, the
+   soft leaf (#C2E698) supports it, and a deep ink scale carries everything else. Flat
+   colour only; the logo artwork is the one place a gradient appears.
+   Status colours always travel with an icon and a text label, so colour is never the only
+   carrier of meaning. */
 @theme {
-  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  /* Plus Jakarta Sans ships as a self-hosted variable font (@fontsource-variable), so the
+     build stays offline; Geist Mono keeps measured numbers aligned in tables and gauges. */
+  --font-sans: "Plus Jakarta Sans Variable", ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-geist-mono), ui-monospace, "SFMono-Regular", monospace;
 
-  --color-canvas: #f5f7f4;
+  --color-canvas: #f7f8f5;
   --color-surface: #ffffff;
-  --color-ink: #13201a;
-  --color-muted: #52625a;
-  --color-line: #dce3de;
+  --color-ink: #10140f;
+  --color-muted: #5a6157;
+  --color-line: #e3e7de;
 
-  --color-brand-50: #edf7f2;
-  --color-brand-100: #d3ebdf;
-  --color-brand-500: #2e8a6b;
-  --color-brand-600: #227259;
-  --color-brand-700: #1b5b47;
-  --color-brand-900: #0e3326;
+  /* Brand: the logo leaf. brand-500 is the accent fill, brand-700 the accessible text tone. */
+  --color-brand-50: #f6fde9;
+  --color-brand-100: #e9f9c6;
+  --color-brand-200: #d6f394;
+  --color-brand-300: #c2e698;
+  --color-brand-500: #acee27;
+  --color-brand-600: #8fd016;
+  --color-brand-700: #527a0c;
+  --color-brand-900: #2c420a;
 
-  --color-pass-50: #ecfdf3;
-  --color-pass-200: #b7ebc9;
-  --color-pass-600: #15803d;
-  --color-pass-700: #166534;
+  /* Deep neutrals for dark sections and high-contrast type. */
+  --color-ink-950: #080b08;
+  --color-ink-900: #10140f;
+  --color-ink-800: #191f18;
+  --color-ink-700: #242b23;
+  --color-ink-600: #384036;
+  --color-ink-400: #737d71;
+  --color-graphite: #5a5a5a;
+
+  --color-pass-50: #f4fce4;
+  --color-pass-200: #d6f394;
+  --color-pass-600: #4f7a0b;
+  --color-pass-700: #3d5e08;
 
   --color-review-50: #fff8eb;
   --color-review-200: #f6d9a5;
   --color-review-600: #b45309;
   --color-review-700: #8f3f0a;
 
-  --color-unknown-50: #eef1ff;
-  --color-unknown-200: #c9d0fb;
-  --color-unknown-600: #4c47d6;
-  --color-unknown-700: #3531a3;
+  --color-unknown-50: #eef2f7;
+  --color-unknown-200: #c5d2e2;
+  --color-unknown-600: #3b5573;
+  --color-unknown-700: #2b405a;
 
   --color-fail-50: #fff1f2;
   --color-fail-600: #be123c;
@@ -111,29 +129,28 @@ body {
     animation: page-enter 220ms var(--ease-glide) both;
   }
 
-  /* Hero backdrop: a soft brand wash over a faint specimen grid, so the first screen reads
-     as an instrument surface rather than an empty page. Static, behind the content. */
-  .hero-field {
-    position: relative;
-    isolation: isolate;
+  /* Faint specimen grid: the one texture in the system. Lines only, no gradient wash; it
+     takes its colour from the surface it sits on. */
+  .grid-field {
+    background-image:
+      linear-gradient(to right, color-mix(in srgb, currentColor 10%, transparent) 1px, transparent 1px),
+      linear-gradient(to bottom, color-mix(in srgb, currentColor 10%, transparent) 1px, transparent 1px);
+    background-size: 28px 28px;
   }
-  .hero-field::before {
-    content: "";
-    position: absolute;
-    inset: -3rem -1.5rem 0;
-    z-index: -1;
-    border-radius: 1.5rem;
-    background:
-      radial-gradient(60% 70% at 15% 20%, color-mix(in srgb, var(--color-brand-100) 70%, transparent), transparent 70%),
-      radial-gradient(45% 60% at 85% 10%, color-mix(in srgb, var(--color-brand-50) 90%, transparent), transparent 70%),
-      linear-gradient(transparent 23px, color-mix(in srgb, var(--color-line) 45%, transparent) 24px),
-      linear-gradient(90deg, transparent 23px, color-mix(in srgb, var(--color-line) 45%, transparent) 24px);
-    background-size:
-      100% 100%,
-      100% 100%,
-      24px 24px,
-      24px 24px;
-    mask-image: radial-gradient(75% 85% at 40% 25%, #000 40%, transparent 100%);
+
+  /* Horizontal marketing track: full-height panels that snap as the reader moves sideways.
+     Scrollbar hidden because the rail below it shows the position instead. */
+  .h-track {
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none;
+    overscroll-behavior-x: contain;
+  }
+  .h-track::-webkit-scrollbar {
+    display: none;
+  }
+  .h-panel {
+    scroll-snap-align: start;
+    scroll-snap-stop: always;
   }
 
   /* Native <dialog>: the panel settles in, the backdrop fades. */
