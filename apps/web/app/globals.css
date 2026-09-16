@@ -161,6 +161,19 @@ body {
     animation: fade-backdrop 200ms var(--ease-glide) both;
   }
 
+  /* Reading progress for long pages, drawn by the scroll position itself. Browsers without
+     scroll-driven animations simply do not show the bar. */
+  .scroll-progress {
+    transform-origin: left center;
+    transform: scaleX(0);
+  }
+  @supports (animation-timeline: scroll()) {
+    .scroll-progress {
+      animation: meter-grow linear both;
+      animation-timeline: scroll(root block);
+    }
+  }
+
   /* A quiet heartbeat for the live API status dot. */
   .heartbeat {
     animation: heartbeat 2.4s var(--ease-glide) infinite;

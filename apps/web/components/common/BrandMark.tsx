@@ -1,12 +1,9 @@
 import Image from "next/image";
 
-import mark from "@/public/brand/mark.svg";
-
 /**
- * The HerbaScope leaf mark, served from the supplied logo artwork
- * (`public/brand/mark.svg`, the leaf pair lifted out of the wordmark file with its original
- * gradients). Decorative: the wordmark beside it carries the name.
+ * The HerbaScope leaf mark: the leaf pair lifted out of the supplied wordmark file with its
+ * original gradients (`public/brand/mark.svg`). Decorative; a wordmark carries the name.
  */
 export function BrandMark({ className = "" }: { className?: string }) {
-  return <Image src={mark} alt="" aria-hidden="true" unoptimized className={className} />;
+  return <Image src="/brand/mark.svg" width={166} height={162} alt="" aria-hidden="true" unoptimized className={className} />;
 }

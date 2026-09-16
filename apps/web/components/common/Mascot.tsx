@@ -1,7 +1,10 @@
 import Image from "next/image";
 
-import mascot from "@/public/brand/mascot.webp";
-import mascotSmall from "@/public/brand/mascot-sm.webp";
+/** Intrinsic sizes of the two exported files, so the layout reserves space before they load. */
+const ARTWORK = {
+  hero: { src: "/brand/mascot.webp", width: 1000, height: 1486, sizes: "(min-width: 1024px) 420px, 60vw" },
+  spot: { src: "/brand/mascot-sm.webp", width: 420, height: 624, sizes: "180px" },
+} as const;
 
 interface MascotProps {
   /** `hero` renders the full-size artwork; `spot` the small version for inline use. */
@@ -14,18 +17,19 @@ interface MascotProps {
 
 /**
  * Herbie, the HerbaScope mascot. Shipped as two pre-sized WebP files so the page never
- * downloads a 2 MB illustration, and imported statically so Next knows its dimensions and
- * reserves the space before it loads.
+ * downloads the 2 MB original.
  */
 export function Mascot({ size = "spot", className = "", alt = "", priority = false }: MascotProps) {
-  const source = size === "hero" ? mascot : mascotSmall;
+  const artwork = ARTWORK[size];
   return (
     <Image
-      src={source}
+      src={artwork.src}
+      width={artwork.width}
+      height={artwork.height}
+      sizes={artwork.sizes}
       alt={alt}
       aria-hidden={alt === "" ? true : undefined}
       priority={priority}
-      sizes={size === "hero" ? "(min-width: 1024px) 420px, 60vw" : "180px"}
       className={className}
     />
   );

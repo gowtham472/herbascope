@@ -1,6 +1,6 @@
 "use client";
 
-import { ClockCounterClockwiseIcon, MicroscopeIcon } from "@phosphor-icons/react/ssr";
+import { MicroscopeIcon } from "@phosphor-icons/react/ssr";
 import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
@@ -42,7 +42,6 @@ export function HistoryView() {
   if (state.data.items.length === 0) {
     return (
       <EmptyState
-        icon={ClockCounterClockwiseIcon}
         title="No analyses yet"
         description="Screening results are stored locally by the API and listed here, newest first."
         action={

@@ -17,6 +17,9 @@ export function SiteHeader() {
 
   return (
     <header className="sticky top-0 z-30 h-14 border-b border-line bg-surface/85 backdrop-blur print:hidden">
+      {onMarketing ? (
+        <div aria-hidden="true" className="scroll-progress absolute inset-x-0 top-0 h-0.5 bg-brand-500" />
+      ) : null}
       <nav aria-label="Main" className="mx-auto flex h-full max-w-6xl items-center justify-between gap-4 px-4 sm:px-6">
         <Link
           href="/"
