@@ -17,7 +17,7 @@ from ml.inference.screening_pipeline import ModelInfo, ScreeningPipeline, Screen
 from ml.preprocessing.image_io import DecodedImage, InvalidImageError, decode_image
 
 DISCLAIMER = (
-    "HerbaScope X provides preliminary visual screening support and does not replace laboratory "
+    "HerbaScope provides preliminary visual screening support and does not replace laboratory "
     "confirmation or expert botanical authentication."
 )
 ALLOWED_CONTENT_TYPES = frozenset({"image/png", "image/jpeg", "image/webp", "image/tiff", "image/bmp"})

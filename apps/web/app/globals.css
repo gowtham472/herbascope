@@ -1,6 +1,6 @@
 @import "tailwindcss";
 
-/* HerbaScope X design tokens.
+/* HerbaScope design tokens.
    The palette is taken from the logo: the bright leaf (#ACEE27) is the single accent, the
    soft leaf (#C2E698) supports it, and a deep ink scale carries everything else. Flat
    colour only; the logo artwork is the one place a gradient appears.

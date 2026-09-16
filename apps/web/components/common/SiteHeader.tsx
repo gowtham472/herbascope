@@ -23,11 +23,10 @@ export function SiteHeader() {
       <nav aria-label="Main" className="mx-auto flex h-full max-w-6xl items-center justify-between gap-4 px-4 sm:px-6">
         <Link
           href="/"
-          aria-label="HerbaScope X home"
+          aria-label="HerbaScope home"
           className="press flex items-center gap-2 rounded-lg focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand-600"
         >
           <Wordmark className="h-6 w-auto" />
-          <span className="rounded bg-ink-900 px-1.5 py-0.5 text-[10px] font-bold tracking-widest text-brand-500">X</span>
         </Link>
 
         <div className="flex items-center gap-1">

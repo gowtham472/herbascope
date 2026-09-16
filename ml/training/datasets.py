@@ -25,7 +25,7 @@ SPLIT_COLUMNS = ["image_id", "dataset", "class_name", "fragment_type", "group_id
 
 OOD_CALIBRATION_LIMITATION = (
     "Because Mikrobat contains only two species, true held-out-species OOD calibration was not possible. "
-    "HerbaScope X therefore uses held-out Mikrobat specimen/fragment groups to characterize within-distribution "
+    "HerbaScope therefore uses held-out Mikrobat specimen/fragment groups to characterize within-distribution "
     "variability and DIMPSAR field-leaf imagery as a far-OOD negative set. The unknown threshold is calibrated "
     "against these distributions and evaluated separately for known-material retention and OOD rejection."
 )

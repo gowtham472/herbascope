@@ -57,7 +57,7 @@ def create_app(settings: Settings | None = None, pipeline: ScreeningPipeline | N
         yield
 
     app = FastAPI(
-        title="HerbaScope X API",
+        title="HerbaScope API",
         version=API_VERSION,
         description="Evidence-driven preliminary visual screening of microscopic medicinal-plant material.",
         lifespan=lifespan,

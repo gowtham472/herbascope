@@ -1,5 +1,5 @@
 """Response contracts. The `prediction / retrieval / unknown / evidence / decision / model` blocks
-follow the frozen HerbaScope X schema; other fields add transparency without changing it."""
+follow the frozen HerbaScope schema; other fields add transparency without changing it."""
 
 from __future__ import annotations
 

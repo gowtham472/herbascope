@@ -45,7 +45,7 @@ def test_analyze_returns_complete_frozen_schema(client):
     assert body["decision"]["thresholds"]["min_classifier_confidence"] == 0.6
     assert body["sample"]["image_url"] == f"/analyses/{body['id']}/image"
     assert body["retrieval"]["matches"][0]["image_url"].startswith("/reference/REF")
-    assert body["disclaimer"].startswith("HerbaScope X provides preliminary visual screening support")
+    assert body["disclaimer"].startswith("HerbaScope provides preliminary visual screening support")
     assert any("same visual representation" in item for item in body["limitations"])
 
 

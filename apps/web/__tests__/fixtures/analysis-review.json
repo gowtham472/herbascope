@@ -225,9 +225,9 @@
   "limitations": [
     "Supported classes: sirih, sirih_merah (Mikrobat reference library). Any other material can only be flagged as not matching the references, never identified.",
     "Conclusions only transfer to fragment types represented in the reference library: epidermis atas; epidermis atas dan kristal kalsium oksalat bentuk prisma; epidermis atas dengan stomata; epidermis bawah dengan idioblas berupa sel minyak; epidermis bawah dengan stomata dan idioblas berupa sel minyak; rambut penutup; sklerenkim.",
-    "Because Mikrobat contains only two species, true held-out-species OOD calibration was not possible. HerbaScope X therefore uses held-out Mikrobat specimen/fragment groups to characterize within-distribution variability and DIMPSAR field-leaf imagery as a far-OOD negative set. The unknown threshold is calibrated against these distributions and evaluated separately for known-material retention and OOD rejection.",
+    "Because Mikrobat contains only two species, true held-out-species OOD calibration was not possible. HerbaScope therefore uses held-out Mikrobat specimen/fragment groups to characterize within-distribution variability and DIMPSAR field-leaf imagery as a far-OOD negative set. The unknown threshold is calibrated against these distributions and evaluated separately for known-material retention and OOD rejection.",
     "The classifier and reference retrieval are complementary analyses of the same visual representation, not independent evidence.",
     "This is reference-consistency screening, not adulteration detection: the reference data contains no adulterated or substitute material."
   ],
-  "disclaimer": "HerbaScope X provides preliminary visual screening support and does not replace laboratory confirmation or expert botanical authentication."
+  "disclaimer": "HerbaScope provides preliminary visual screening support and does not replace laboratory confirmation or expert botanical authentication."
 }

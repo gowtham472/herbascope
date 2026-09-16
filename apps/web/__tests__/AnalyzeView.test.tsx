@@ -69,7 +69,7 @@ describe("AnalyzeView", () => {
   });
 
   it("explains when the API cannot be reached", async () => {
-    vi.mocked(getHealth).mockRejectedValue(new ApiError(0, "Cannot reach the HerbaScope X API."));
+    vi.mocked(getHealth).mockRejectedValue(new ApiError(0, "Cannot reach the HerbaScope API."));
     render(<AnalyzeView />);
     expect(await screen.findByRole("alert")).toHaveTextContent("The screening API is unavailable");
     expect(screen.queryByLabelText(/upload microscopic sample/i)).not.toBeInTheDocument();

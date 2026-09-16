@@ -1,4 +1,4 @@
-# HerbaScope X web image. Build context: apps/web (see docker-compose.yml).
+# HerbaScope web image. Build context: apps/web (see docker-compose.yml).
 # NEXT_PUBLIC_* values are inlined at build time, so the API URL the *browser* uses is a build arg.
 
 FROM node:24-alpine AS deps

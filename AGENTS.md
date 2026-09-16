@@ -1,6 +1,6 @@
-# HerbaScope X — agent guide
+# HerbaScope - agent guide
 
-HerbaScope X is a local-first, evidence-driven preliminary visual screening system for
+HerbaScope is a local-first, evidence-driven preliminary visual screening system for
 microscopic medicinal-plant material. Read `README.md` first; design rationale lives in
 `docs/Architecture_Decisions.md`.
 
@@ -13,7 +13,7 @@ microscopic medicinal-plant material. Read `README.md` first; design rationale l
 | `ml/` | Shared ML library + training/evaluation modules | same `.venv` |
 | `scripts/` | Orchestration entry points (download, pipeline, smoke test, demo cases) | same `.venv` |
 | `tests/` | ML unit/integration tests | pytest |
-| `docs/` | Specs, ADRs, generated reports (`docs/reports/`) | — |
+| `docs/` | Specs, ADRs, generated reports (`docs/reports/`) | - |
 
 Next.js-specific agent rules live in `apps/web/AGENTS.md` (managed by `next dev`). Read
 the bundled docs in `apps/web/node_modules/next/dist/docs/` before writing frontend code.
@@ -28,7 +28,7 @@ the bundled docs in `apps/web/node_modules/next/dist/docs/` before writing front
   run with `python -m ml.experiments.run_experiments --config ...`) and are adopted only by its
   cross-validation rule, never by test or held-out accuracy.
 - Classifier and reference retrieval are "complementary analyses of the same visual
-  representation" — never describe them as independent evidence.
+  representation" - never describe them as independent evidence.
 - Held-out Mikrobat fragment groups are "held-out known-material samples", never
   "unknown species". DIMPSAR is a far-OOD negative set, never a training class.
 - No LLM participates in any decision. No Cloud Vision. No hardware dependencies.

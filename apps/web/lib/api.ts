@@ -37,7 +37,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   try {
     response = await fetch(apiUrl(path), { ...init, cache: "no-store" });
   } catch {
-    throw new ApiError(0, `Cannot reach the HerbaScope X API at ${API_BASE_URL}. Check that the API is running.`);
+    throw new ApiError(0, `Cannot reach the HerbaScope API at ${API_BASE_URL}. Check that the API is running.`);
   }
   const body: unknown = await response.json().catch(() => null);
   if (!response.ok) {

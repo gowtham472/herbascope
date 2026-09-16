@@ -7,7 +7,7 @@ export default function NotFound() {
     <div className="mx-auto max-w-3xl px-5 py-16 sm:px-8">
       <EmptyState
         title="Page not found"
-        description="This address does not match any HerbaScope X page."
+        description="This address does not match any HerbaScope page."
         action={
           <Link
             href="/"

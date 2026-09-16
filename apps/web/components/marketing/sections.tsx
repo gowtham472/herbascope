@@ -55,7 +55,7 @@ export function Hero() {
             {HEADLINE}
           </h1>
           <p className="fade-in mt-6 max-w-xl text-lg leading-relaxed text-white/70 [animation-delay:120ms]">
-            HerbaScope X reads a micrograph, compares it against real reference material, measures how far it sits from
+            HerbaScope reads a micrograph, compares it against real reference material, measures how far it sits from
             everything it knows, and applies written rules to decide. When the evidence is not there, it says so.
           </p>
           <div className="fade-in mt-9 flex flex-wrap gap-3 [animation-delay:180ms]">
@@ -77,7 +77,7 @@ export function Hero() {
         </div>
 
         <div className="fade-in relative justify-self-center [animation-delay:240ms]">
-          <Mascot size="hero" priority alt="Herbie, the HerbaScope mascot" className="w-64 sm:w-80 lg:w-[24rem]" />
+          <Mascot variant="hero" priority alt="Herbie, the HerbaScope mascot" className="w-64 sm:w-80 lg:w-[24rem]" />
         </div>
       </div>
 
@@ -350,7 +350,7 @@ export function Limits() {
       </h2>
       <div className="mt-12 grid gap-5 md:grid-cols-2">
         <Reveal className="rounded-3xl border border-line bg-surface p-6">
-          <h3 className="font-bold">What HerbaScope X supports</h3>
+          <h3 className="font-bold">What HerbaScope supports</h3>
           <ul className="mt-4 space-y-3 text-sm text-muted">
             {SUPPORTED.map((item) => (
               <li key={item} className="flex gap-2">
@@ -402,7 +402,7 @@ export function CallToAction() {
               Upload a sample
               <ArrowRightIcon aria-hidden="true" weight="bold" className="size-4 transition-transform duration-200 group-hover:translate-x-1" />
             </Link>
-            <Mascot size="spot" className="hidden w-20 sm:block" />
+            <Mascot variant="spot" className="hidden w-20 sm:block" />
           </div>
         </div>
         <div className="[&_dd]:text-white [&_h2]:text-white [&_section]:border-white/10 [&_section]:bg-ink-800 [&_section]:text-white">

@@ -1,4 +1,4 @@
-# HerbaScope X runtime + training dependencies (Python 3.12). Pinned for reproducibility.
+# HerbaScope runtime + training dependencies (Python 3.12). Pinned for reproducibility.
 # Linux/Docker: install torch from the CPU wheel index first to avoid the multi-GB CUDA
 # build:  pip install torch==2.14.0 --index-url https://download.pytorch.org/whl/cpu
 

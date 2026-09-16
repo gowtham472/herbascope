@@ -72,7 +72,7 @@ Reference-distance distributions (distance = 1 - mean cosine similarity to the k
 | ood_evaluation | 200 | 0.276 | 0.287 | 0.309 | 0.325 | 0.338 | 0.353 | 0.369 |
 | ambiguity_probe | 53 | 0.066 | 0.070 | 0.084 | 0.093 | 0.118 | 0.160 | 0.168 |
 
-**Limitation.** Because Mikrobat contains only two species, true held-out-species OOD calibration was not possible. HerbaScope X therefore uses held-out Mikrobat specimen/fragment groups to characterize within-distribution variability and DIMPSAR field-leaf imagery as a far-OOD negative set. The unknown threshold is calibrated against these distributions and evaluated separately for known-material retention and OOD rejection.
+**Limitation.** Because Mikrobat contains only two species, true held-out-species OOD calibration was not possible. HerbaScope therefore uses held-out Mikrobat specimen/fragment groups to characterize within-distribution variability and DIMPSAR field-leaf imagery as a far-OOD negative set. The unknown threshold is calibrated against these distributions and evaluated separately for known-material retention and OOD rejection.
 
 ## Decision policy
 

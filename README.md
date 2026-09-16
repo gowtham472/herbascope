@@ -1,11 +1,11 @@
-# HerbaScope X
+# HerbaScope
 
-**Evidence before confidence.** HerbaScope X is a local-first, evidence-driven screening system for
+**Evidence before confidence.** HerbaScope is a local-first, evidence-driven screening system for
 microscopic medicinal-plant material. It classifies a micrograph, shows the most similar reference
 micrographs, estimates whether the sample is outside the known reference distribution, and applies
 a deterministic, versioned policy to decide: **PRELIMINARY_PASS**, **REVIEW_REQUIRED** or **UNKNOWN**.
 
-> HerbaScope X provides preliminary visual screening support and does not replace laboratory
+> HerbaScope provides preliminary visual screening support and does not replace laboratory
 > confirmation or expert botanical authentication.
 
 - No cloud APIs, no LLM, no hardware. Inference runs on a CPU laptop, offline.
@@ -316,7 +316,7 @@ Verified counts are in [`docs/reports/dataset_report.md`](docs/reports/dataset_r
 - Only two species (`sirih`, `sirih_merah`) are supported. Other material can only be flagged as
   not matching, never identified.
 - Because Mikrobat contains only two species, true held-out-species OOD calibration was not
-  possible. HerbaScope X therefore uses held-out Mikrobat specimen/fragment groups to characterize
+  possible. HerbaScope therefore uses held-out Mikrobat specimen/fragment groups to characterize
   within-distribution variability and DIMPSAR field-leaf imagery as a far-OOD negative set. The
   unknown threshold is calibrated against these distributions and evaluated separately for
   known-material retention and OOD rejection.

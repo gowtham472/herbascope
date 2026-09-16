@@ -1,4 +1,4 @@
-# HerbaScope X - The Project Explained
+# HerbaScope - The Project Explained
 
 This document explains the whole project twice: in **plain language** (for judges, teammates and
 anyone new) and in **technical detail** (for engineers). Every number below was measured on this
@@ -12,14 +12,14 @@ project's real data and artifacts. Design decisions are cross-referenced to
 **Plain language.** Herbal medicines are made from dried, powdered plant material. One way to
 check that the right plant is in the bag is to look at the powder under a microscope and compare
 the tiny structures you see (cell walls, hairs, crystals, pores) with known reference samples. This
-takes an expert. HerbaScope X helps with the first look. You upload a microscope photo, and it says:
+takes an expert. HerbaScope helps with the first look. You upload a microscope photo, and it says:
 
 - **Preliminary pass**: this looks strongly and consistently like a supported reference plant;
 - **Review required**: the evidence is mixed, so a person should look; or
 - **Unknown**: this does not look like anything in our reference library, so we won't guess.
 
 The key idea is in the tagline **"Evidence before confidence."** Most AI demos show a single
-confident answer. HerbaScope X shows *why*: the similar reference images it found, how far the
+confident answer. HerbaScope shows *why*: the similar reference images it found, how far the
 sample is from known material, whether different checks agree, and the exact rules behind the
 decision.
 
@@ -60,7 +60,7 @@ supported by evidence".
 ## 3. The solution idea
 
 ### Plain language
-Instead of trusting one answer, HerbaScope X gathers several kinds of evidence and only says
+Instead of trusting one answer, HerbaScope gathers several kinds of evidence and only says
 "pass" when all of them line up:
 
 | Evidence | Simple meaning |
@@ -346,7 +346,7 @@ tested alternatives and **rejected them with evidence**:
 
 ### 6.5 The unavoidable limitation (stated everywhere, verbatim)
 > Because Mikrobat contains only two species, true held-out-species OOD calibration was not
-> possible. HerbaScope X therefore uses held-out Mikrobat specimen/fragment groups to characterize
+> possible. HerbaScope therefore uses held-out Mikrobat specimen/fragment groups to characterize
 > within-distribution variability and DIMPSAR field-leaf imagery as a far-OOD negative set. The
 > unknown threshold is calibrated against these distributions and evaluated separately for
 > known-material retention and OOD rejection.

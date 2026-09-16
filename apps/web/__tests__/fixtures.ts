@@ -1,4 +1,4 @@
-// Real API responses captured from a running HerbaScope X API (see __tests__/fixtures/*.json).
+// Real API responses captured from a running HerbaScope API (see __tests__/fixtures/*.json).
 import analysesJson from "./fixtures/analyses.json";
 import reviewJson from "./fixtures/analysis-review.json";
 import healthJson from "./fixtures/health.json";

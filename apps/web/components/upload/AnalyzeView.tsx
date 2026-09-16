@@ -1,12 +1,12 @@
 "use client";
 
 import { ArrowCounterClockwiseIcon, MicroscopeIcon } from "@phosphor-icons/react/ssr";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { AnalysisProgress } from "@/components/analysis/AnalysisProgress";
 import { ErrorState } from "@/components/common/ErrorState";
-import { Mascot } from "@/components/common/Mascot";
 import { Fade } from "@/components/motion/Fade";
 import { useApiResource } from "@/hooks/useApiResource";
 import { analyzeImage, ApiError, getHealth } from "@/lib/api";
@@ -125,7 +125,7 @@ export function AnalyzeView() {
           </Fade>
         ) : (
           <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-line p-6 text-center text-sm text-muted">
-            <Mascot size="spot" className="w-24 opacity-90" />
+            <Image src="/brand/no_sample_mascot.png" width={182} height={96} alt="Mascot" unoptimized priority className="w-80 opacity-90" />
             No sample selected yet. The preview and the screening action appear here.
           </div>
         )}

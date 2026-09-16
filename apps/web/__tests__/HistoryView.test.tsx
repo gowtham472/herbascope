@@ -53,7 +53,7 @@ describe("HistoryView", () => {
   });
 
   it("shows an error state when the API fails", async () => {
-    vi.mocked(listAnalyses).mockRejectedValue(new ApiError(0, "Cannot reach the HerbaScope X API."));
+    vi.mocked(listAnalyses).mockRejectedValue(new ApiError(0, "Cannot reach the HerbaScope API."));
     render(<HistoryView />);
     expect(await screen.findByRole("alert")).toHaveTextContent("Could not load analysis history");
   });

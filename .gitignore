@@ -1,4 +1,4 @@
-# HerbaScope X ignore rules.
+# HerbaScope ignore rules.
 # Rule of thumb: source, configs and human-readable reports are committed;
 # anything a pipeline script regenerates (datasets, embeddings, model binaries,
 # runtime databases) is ignored. See docs/Architecture_Decisions.md (ADR-009).

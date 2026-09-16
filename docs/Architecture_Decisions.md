@@ -1,4 +1,4 @@
-# HerbaScope X - Architecture Decision Record
+# HerbaScope - Architecture Decision Record
 
 Every significant design choice, why it was made, and what was rejected. Numbers quoted here
 come from the generated reports in [`docs/reports/`](reports/); rerunning the pipeline regenerates
@@ -39,7 +39,7 @@ Python library and training/evaluation modules), `scripts/` (orchestration), `te
 `docker/`. The Next.js scaffold was moved from the root into `apps/web` with `git mv`, so its
 history is preserved.
 
-**Why a monorepo suits HerbaScope X best**
+**Why a monorepo suits HerbaScope best**
 
 1. **One contract, one commit.** The frontend types (`apps/web/types/index.ts`), the API schema
    (`services/api/app/schemas/analysis.py`) and the ML result objects change together. In one
