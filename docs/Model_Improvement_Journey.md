@@ -57,7 +57,7 @@ says so.
 | E2 | CLS + mean patch token | 87.5% | 68/72 | 54/104 | 611 | **no** | test up, CV down |
 | E3 | 308 px | 89.4% | 68/72 | 57/104 | 1392 | yes | CV up |
 | E4 | ViT-B/14 backbone | 88.7% | 67/72 | 58/104 | 3727 | **no** | CV down, over budget |
-| E5 | ViT-L/14 backbone | | | | | | |
+| E5 | ViT-L/14 backbone | not completed | | | | - | see note below |
 | F1 | last-4-block CLS | 89.9% | 68/72 | 62/104 | 1392 | yes | CV up |
 | F2 | 448 px, 4 rotations | 90.6% | 69/72 | 58/104 | 1545 | yes | CV up |
 | G1 | 6 views | 90.4% | 70/72 | 59/104 | 2317 | **no** | test up, CV down |
@@ -86,8 +86,14 @@ Logs: [phase 1](reports/model_improvement_experiments-v1.md) ·
   first test of the protocol: on test alone we would have kept it.
 - **Resolution (E3, adopted).** The 300 px micrographs were being shrunk to 224 px, so small
   structures (stomata, crystals) covered few 14 px patches. At 308 px: CV 89.4%.
-- **Bigger encoders (E4 rejected, E5 reference).** ViT-B/14 *lowered* CV to 88.7% and took 3.7 s
-  per image. More parameters did not read these micrographs better.
+- **Bigger encoders (E4 rejected, E5 not completed).** ViT-B/14 *lowered* CV to 88.7% and took
+  3.7 s per image, over the 3 s budget. More parameters did not read these micrographs better.
+
+**Note on E5.** The registered ladder also contained ViT-L/14 as an accuracy reference. It was
+never completed: encoding the development pool with ViT-L at 308 px exhausted memory on the
+development laptop, and a retry at a smaller batch size was stopped for time. It could not have
+been adopted in any case, because ViT-B/14 already costs 3.7 s per image against a 3 s budget and
+ViT-L is larger still. The rung is reported here as unrun rather than quietly dropped.
 
 ### Phase 2 - read finer detail without a bigger model
 - **Multi-block CLS (F1, adopted).** The final CLS token is the most abstract summary; the CLS
