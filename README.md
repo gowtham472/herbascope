@@ -1,5 +1,7 @@
 # HerbaScope
 
+[![CI](https://github.com/gowtham472/herbascope/actions/workflows/ci.yml/badge.svg)](https://github.com/gowtham472/herbascope/actions/workflows/ci.yml)
+
 **Evidence before confidence.** HerbaScope is a local-first, evidence-driven screening system for
 microscopic medicinal-plant material. It classifies a micrograph, shows the most similar reference
 micrographs, estimates whether the sample is outside the known reference distribution, and applies
