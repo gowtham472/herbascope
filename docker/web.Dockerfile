@@ -27,6 +27,8 @@ RUN addgroup -S herbascope && adduser -S herbascope -G herbascope
 # `output: "standalone"` (next.config.ts) emits a self-contained server; static assets are copied alongside.
 COPY --from=build --chown=herbascope:herbascope /app/.next/standalone ./
 COPY --from=build --chown=herbascope:herbascope /app/.next/static ./.next/static
+# The standalone server does not bundle public/, and the brand artwork lives there.
+COPY --from=build --chown=herbascope:herbascope /app/public ./public
 USER herbascope
 EXPOSE 3000
 CMD ["node", "server.js"]

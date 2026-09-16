@@ -12,6 +12,7 @@ a deterministic, versioned policy to decide: **PRELIMINARY_PASS**, **REVIEW_REQU
 
 - No cloud APIs, no LLM, no hardware. Inference runs on a CPU laptop, offline.
 - Every number in the UI comes from real trained artifacts; every threshold is calibrated on data.
+- End-to-end architecture: [`docs/Architecture_Overview.md`](docs/Architecture_Overview.md).
 - Design rationale for every choice: [`docs/Architecture_Decisions.md`](docs/Architecture_Decisions.md).
 
 ---
@@ -335,11 +336,11 @@ Verified counts are in [`docs/reports/dataset_report.md`](docs/reports/dataset_r
 
 | Document | Content |
 |---|---|
+| [`docs/Architecture_Overview.md`](docs/Architecture_Overview.md) | End-to-end architecture: data lock, offline pipeline, release integrity, runtime path, API, frontend, deployment |
 | [`docs/Project_Explained.md`](docs/Project_Explained.md) | The whole project explained in plain language and technical detail: problem, solution, ML, data, architecture, stack choices, creative decisions |
 | [`docs/Architecture_Decisions.md`](docs/Architecture_Decisions.md) | Why every component is built the way it is (ADR-001 … 023) |
 | [`docs/reports/dataset_report.md`](docs/reports/dataset_report.md) | Generated dataset lock: counts, duplicates, splits, licenses |
 | [`docs/reports/evaluation_report.md`](docs/reports/evaluation_report.md) | Generated metrics, calibration, decision counts, ablation, findings |
 | `docs/reports/model_improvement_experiments-v*.md` | Generated model-improvement logs, one per phase: pre-registered ladder, cross-validated accuracy, adoption decisions |
 | [`docs/reports/demo_cases.md`](docs/reports/demo_cases.md) | Generated presentation cases |
-
 | [`data/README.md`](data/README.md), [`models/README.md`](models/README.md) | Generated file layouts |
