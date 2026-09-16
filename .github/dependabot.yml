@@ -1,0 +1,24 @@
+version: 2
+
+updates:
+  - package-ecosystem: pip
+    directory: /
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 5
+    # Model behaviour depends on the encoder stack, so those upgrades are deliberate:
+    # bumping them means rebuilding and re-evaluating a release (see ADR-022).
+    ignore:
+      - dependency-name: torch
+      - dependency-name: transformers
+
+  - package-ecosystem: npm
+    directory: /apps/web
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 5
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
