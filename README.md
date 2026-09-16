@@ -339,8 +339,5 @@ Verified counts are in [`docs/reports/dataset_report.md`](docs/reports/dataset_r
 | [`docs/reports/evaluation_report.md`](docs/reports/evaluation_report.md) | Generated metrics, calibration, decision counts, ablation, findings |
 | `docs/reports/model_improvement_experiments-v*.md` | Generated model-improvement logs, one per phase: pre-registered ladder, cross-validated accuracy, adoption decisions |
 | [`docs/reports/demo_cases.md`](docs/reports/demo_cases.md) | Generated presentation cases |
-| [`docs/Architecture.md`](docs/Architecture.md) | Original technical architecture specification (with implementation status) |
-| [`docs/Data_Set.md`](docs/Data_Set.md) | Microscopy-first dataset specification (with implementation status) |
-| [`docs/Project_Report.md`](docs/Project_Report.md) | Project report (with implementation status) |
-| [`docs/prompt.json`](docs/prompt.json) | Original build specification |
+
 | [`data/README.md`](data/README.md), [`models/README.md`](models/README.md) | Generated file layouts |

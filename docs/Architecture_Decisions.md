@@ -71,7 +71,7 @@ and reference dataset. A seeded subset of DIMPSAR (Hugging Face, pinned revision
 verified) is used only as far-out-of-distribution negatives.
 
 **Why.** Microscopic simplicia fragments match the pharmacognostic screening problem
-(`docs/Data_Set.md`). The alternatives were verified during the dataset-lock step:
+(see the dataset specification). The alternatives were verified during the dataset-lock step:
 - SimpliScopeX: the public repository contains a trained model and a Streamlit app, not images.
 - MPalyn: the training repository has code only, and the database site returned HTTP 404.
 - DIMPSAR: CC BY 4.0, 5,945 images and 40 classes, verified on download. These are field-leaf

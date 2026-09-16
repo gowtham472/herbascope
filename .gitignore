@@ -42,3 +42,6 @@ models/*
 .DS_Store
 Thumbs.db
 *.pem
+
+# Private working material (specifications handed to the team, judging notes).
+docs/private/

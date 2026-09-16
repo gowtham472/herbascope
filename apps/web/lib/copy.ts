@@ -1,4 +1,4 @@
-// Product copy fixed by the HerbaScope specification (docs/prompt.json, ui_copy).
+// Product copy fixed by the HerbaScope specification.
 
 export const HEADLINE = "Evidence before confidence.";
 
