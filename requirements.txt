@@ -19,7 +19,7 @@ pyarrow==25.0.1
 # Classifier, calibration and retrieval
 scikit-learn==1.9.1
 joblib==1.6.0
-faiss-cpu==1.15.0
+faiss-cpu==1.15.1
 
 # API
 fastapi==0.141.1
